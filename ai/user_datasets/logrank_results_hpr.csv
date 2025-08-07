@@ -1,0 +1,7 @@
+Group1,Group2,p-value,Significant
+astrocytoma,gbm,0.1377,False
+astrocytoma,oligodendroglioma,0.0553,False
+astrocytoma,ependymoma,0.9416,False
+gbm,oligodendroglioma,0.0016,True
+gbm,ependymoma,0.4306,False
+oligodendroglioma,ependymoma,0.2247,False

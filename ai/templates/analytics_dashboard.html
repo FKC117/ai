@@ -145,9 +145,25 @@
 
                 <!-- Dataset History -->
                 <div class="mb-6">
-                    <h3 class="text-lg font-semibold text-primary mb-3">Dataset History</h3>
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-primary">Dataset History</h3>
+                        <button class="text-xs text-secondary hover:text-primary transition-colors" id="multiselect-toggle" title="Toggle multiselect mode">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                            </svg>
+                        </button>
+                    </div>
                     <div class="space-y-2 max-h-32 overflow-y-auto" id="dataset-history">
                         <!-- Dataset history items will be added here dynamically -->
+                    </div>
+                    <!-- Multiselect actions (hidden by default) -->
+                    <div class="hidden mt-3 space-y-2" id="multiselect-actions">
+                        <div class="flex items-center justify-between text-xs text-text-secondary">
+                            <span id="selected-count">0 selected</span>
+                            <button class="text-red-500 hover:text-red-700 transition-colors" onclick="deleteSelectedDatasets()">
+                                Delete Selected
+                            </button>
+                        </div>
                     </div>
                 </div>
 
@@ -981,6 +997,10 @@
             
             // Load user state from backend
             loadUserState();
+            loadWarningPreferences();
+            
+            // Add event listener for multiselect toggle
+            document.getElementById('multiselect-toggle').addEventListener('click', toggleMultiselectMode);
             
             // Function to load user state
             function loadUserState() {
@@ -1002,16 +1022,9 @@
                         updateDatasetHistory();
                         updateDatasetCount();
                         
-                        // Show appropriate state
-                        if (datasets.length === 0 || currentDatasetIndex === -1) {
-                            showBlankState();
-                        } else {
-                            // Remove blank state if it exists
-                            const blankStateMessage = document.querySelector('.blank-state-message');
-                            if (blankStateMessage) {
-                                blankStateMessage.remove();
-                            }
-                        }
+                        // Always show blank state initially, even if dataset is loaded
+                        // User must explicitly select an analysis type
+                        showBlankState();
                         
                         console.log('User state loaded:', {
                             datasets: datasets.length,
@@ -1094,7 +1107,14 @@
                 const selector = document.createElement('div');
                 selector.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
                 selector.innerHTML = `
-                    <div class="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+                    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+                        <!-- Close button -->
+                        <button class="absolute top-3 right-3 text-text-secondary hover:text-primary transition-colors" onclick="closeDatasetSelector()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        
                         <h3 class="text-lg font-semibold text-primary mb-4">Select Dataset</h3>
                         <div class="space-y-2 max-h-64 overflow-y-auto">
                             ${datasets.map((dataset, index) => `
@@ -1133,14 +1153,46 @@
                         dataset_id: datasets[index].id,
                         dataset_name: datasets[index].name
                     });
+                    
+                    // Check if this dataset has summary statistics analysis
+                    checkAnalysisHistory(datasets[index].id);
                 }
                 
                 // Minimize upload section when switching datasets
                 minimizeUploadSection();
                 
                 updateCurrentDatasetDisplay();
+                updateDatasetHistory();
                 closeDatasetSelector();
             };
+            
+            function checkAnalysisHistory(datasetId) {
+                fetch(`{% url "get_analysis_history" 0 %}`.replace('0', datasetId))
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success && data.analysis_history.length > 0) {
+                            // Check if summary statistics exists
+                            const hasSummaryStats = data.analysis_history.some(analysis => 
+                                analysis.analysis_type === 'summary_stats' && analysis.is_complete
+                            );
+                            
+                            if (hasSummaryStats) {
+                                // Show summary statistics automatically
+                                showSummaryStatistics();
+                            } else {
+                                // Show blank state with analysis options
+                                showBlankState();
+                            }
+                        } else {
+                            // No analysis history, show blank state
+                            showBlankState();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error checking analysis history:', error);
+                        showBlankState();
+                    });
+            }
             
             window.closeDatasetSelector = function() {
                 const selector = document.querySelector('.fixed.inset-0');
@@ -1181,20 +1233,42 @@
                     return;
                 }
                 
-                datasetHistory.innerHTML = datasets.map((dataset, index) => `
-                    <div class="flex items-center justify-between p-2 border border-border-light rounded-lg hover:bg-surface cursor-pointer ${index === currentDatasetIndex ? 'bg-primary-50 border-primary' : ''}" onclick="switchDataset(${index})">
-                        <div class="flex items-center">
-                            <svg class="w-3 h-3 text-secondary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
-                            </svg>
-                            <div class="text-xs">
-                                <div class="font-medium text-text-primary">${dataset.name}</div>
-                                <div class="text-text-secondary">${dataset.rows} rows</div>
+                datasetHistory.innerHTML = datasets.map((dataset, index) => {
+                    const isSelected = selectedDatasets.has(dataset.id);
+                    const isCurrent = index === currentDatasetIndex;
+                    
+                    return `
+                        <div class="flex items-center justify-between p-2 border border-border-light rounded-lg hover:bg-surface cursor-pointer ${
+                            multiselectMode ? 
+                                (isSelected ? 'bg-blue-50 border-blue-300' : '') :
+                                (isCurrent ? 'bg-primary-50 border-primary' : '')
+                        }" onclick="${multiselectMode ? `toggleDatasetSelection(${dataset.id})` : `switchDataset(${index})`}">
+                            <div class="flex items-center flex-1">
+                                ${multiselectMode ? `
+                                    <input type="checkbox" class="rounded border-border text-primary focus:ring-primary-300 mr-2" ${isSelected ? 'checked' : ''} onclick="event.stopPropagation(); toggleDatasetSelection(${dataset.id})">
+                                ` : `
+                                    <svg class="w-3 h-3 text-secondary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                                    </svg>
+                                `}
+                                <div class="text-xs flex-1">
+                                    <div class="font-medium text-text-primary">${dataset.name}</div>
+                                    <div class="text-text-secondary">${dataset.rows} rows</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center space-x-1">
+                                ${!multiselectMode && isCurrent ? '<div class="w-2 h-2 bg-primary rounded-full"></div>' : ''}
+                                ${!multiselectMode ? `
+                                    <button class="text-red-500 hover:text-red-700 transition-colors p-1" onclick="event.stopPropagation(); deleteDataset(${dataset.id}, '${dataset.name}')" title="Delete dataset">
+                                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                                        </svg>
+                                    </button>
+                                ` : ''}
                             </div>
                         </div>
-                        ${index === currentDatasetIndex ? '<div class="w-2 h-2 bg-primary rounded-full"></div>' : ''}
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
             }
             
             // Drag and drop functionality
@@ -1427,23 +1501,36 @@
                 if (!existingBlankState) {
                     const blankStateDiv = document.createElement('div');
                     blankStateDiv.className = 'blank-state-message flex flex-col items-center justify-center h-full py-12';
+                    
+                    // Check if we have a current dataset
+                    const hasDataset = datasets.length > 0 && currentDatasetIndex !== -1;
+                    
                     blankStateDiv.innerHTML = `
                         <div class="w-24 h-24 bg-accent-50 rounded-full flex items-center justify-center mb-6">
                             <svg class="w-12 h-12 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-primary mb-2">Start Your Analysis</h3>
+                        <h3 class="text-xl font-semibold text-primary mb-2">${hasDataset ? 'Select Analysis Type' : 'Start Your Analysis'}</h3>
                         <p class="text-text-secondary text-center max-w-md mb-6">
-                            Upload a dataset and select a statistical test from the left panel to begin your analysis.
+                            ${hasDataset ? 
+                                'Choose a statistical test from the left panel to analyze your dataset.' : 
+                                'Upload a dataset and select a statistical test from the left panel to begin your analysis.'
+                            }
                         </p>
                         <div class="flex space-x-4">
-                            <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors" onclick="scrollToUpload()">
-                                Upload Dataset
-                            </button>
-                            <button class="px-6 py-2 border border-border-light text-text-primary rounded-lg hover:bg-surface transition-colors" onclick="showDatasetHistory()">
-                                View History
-                            </button>
+                            ${!hasDataset ? `
+                                <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors" onclick="scrollToUpload()">
+                                    Upload Dataset
+                                </button>
+                                <button class="px-6 py-2 border border-border-light text-text-primary rounded-lg hover:bg-surface transition-colors" onclick="showDatasetHistory()">
+                                    View History
+                                </button>
+                            ` : `
+                                <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors" onclick="scrollToLeftPanel()">
+                                    View Analysis Options
+                                </button>
+                            `}
                         </div>
                     `;
                     workspaceContent.appendChild(blankStateDiv);
@@ -1456,6 +1543,458 @@
                 if (uploadSection) {
                     uploadSection.scrollIntoView({ behavior: 'smooth' });
                 }
+            }
+            
+            function scrollToLeftPanel() {
+                // Scroll to the left panel
+                const leftPanel = document.getElementById('left-panel');
+                if (leftPanel) {
+                    leftPanel.scrollIntoView({ behavior: 'smooth' });
+                }
+            }
+            
+            // Function to show dataset history (same as dataset selector)
+            window.showDatasetHistory = function() {
+                showDatasetSelector();
+            };
+            
+            // Global variables for warning preferences and multiselect
+            let warningPreferences = {
+                show_delete_warning: true,
+                show_multiselect_help: true
+            };
+            let multiselectMode = false;
+            let selectedDatasets = new Set();
+            
+            // Load warning preferences
+            function loadWarningPreferences() {
+                fetch('{% url "get_warning_preferences" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            warningPreferences = {
+                                show_delete_warning: data.show_delete_warning,
+                                show_multiselect_help: data.show_multiselect_help
+                            };
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error loading warning preferences:', error);
+                    });
+            }
+            
+            // Delete dataset function
+            window.deleteDataset = function(datasetId, datasetName) {
+                if (warningPreferences.show_delete_warning) {
+                    showDeleteWarning(datasetId, datasetName);
+                } else {
+                    performDelete(datasetId, datasetName);
+                }
+            };
+            
+            function showDeleteWarning(datasetId, datasetName) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+                        <!-- Close button -->
+                        <button class="absolute top-3 right-3 text-text-secondary hover:text-primary transition-colors" onclick="closeDeleteModal()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-primary">Delete Dataset</h3>
+                                <p class="text-sm text-text-secondary">This action cannot be undone</p>
+                            </div>
+                        </div>
+                        <p class="text-text-primary mb-4">
+                            Are you sure you want to delete "<strong>${datasetName}</strong>"? 
+                            This will permanently remove the dataset and all associated analysis history.
+                        </p>
+                        <div class="flex items-center mb-4">
+                            <input type="checkbox" id="dont-show-again" class="rounded border-border text-primary focus:ring-primary-300 mr-2">
+                            <label for="dont-show-again" class="text-sm text-text-secondary">Don't show this warning again</label>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button class="px-4 py-2 text-text-secondary hover:text-primary transition-colors" onclick="closeDeleteModal()">
+                                Cancel
+                            </button>
+                            <button style="background-color: #ef4444; color: white; border: 2px solid #dc2626; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer;" class="hover:bg-red-600 transition-colors" onclick="performDelete(${datasetId}, '${datasetName}')">
+                                Delete Dataset
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            // Make functions globally available
+            window.closeDeleteModal = function() {
+                const modals = document.querySelectorAll('.fixed.inset-0');
+                modals.forEach(modal => {
+                    if (modal.classList.contains('bg-black')) {
+                        modal.remove();
+                    }
+                });
+            };
+            
+            window.performDelete = function(datasetId, datasetName) {
+                const dontShowAgain = document.getElementById('dont-show-again')?.checked || false;
+                
+                // Update warning preferences if needed
+                if (dontShowAgain) {
+                    updateWarningPreference('delete', false);
+                }
+                
+                // Close modal immediately
+                closeDeleteModal();
+                
+                // Perform delete
+                const formData = new FormData();
+                formData.append('dataset_id', datasetId);
+                
+                fetch('{% url "delete_dataset" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // Remove from datasets array
+                        const index = datasets.findIndex(d => d.id === datasetId);
+                        if (index !== -1) {
+                            datasets.splice(index, 1);
+                            
+                            // Update current dataset index if needed
+                            if (currentDatasetIndex === index) {
+                                currentDatasetIndex = datasets.length > 0 ? 0 : -1;
+                            } else if (currentDatasetIndex > index) {
+                                currentDatasetIndex--;
+                            }
+                        }
+                        
+                        // Update displays
+                        updateCurrentDatasetDisplay();
+                        updateDatasetHistory();
+                        updateDatasetCount();
+                        
+                        // Show success message
+                        showSuccessMessage(data.message);
+                    } else {
+                        showErrorMessage(data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error deleting dataset:', error);
+                    showErrorMessage('Error deleting dataset. Please try again.');
+                });
+            }
+            
+            function updateWarningPreference(type, showWarning) {
+                const formData = new FormData();
+                formData.append('warning_type', type);
+                formData.append('show_warning', showWarning);
+                
+                fetch('{% url "update_warning_preferences" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        warningPreferences[type === 'delete' ? 'show_delete_warning' : 'show_multiselect_help'] = showWarning;
+                    }
+                })
+                .catch(error => {
+                    console.error('Error updating warning preferences:', error);
+                });
+            }
+            
+            function showSuccessMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'fixed top-4 right-4 bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded z-50';
+                messageDiv.textContent = message;
+                document.body.appendChild(messageDiv);
+                
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 3000);
+            }
+            
+            function showErrorMessage(message) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'fixed top-4 right-4 bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded z-50';
+                messageDiv.textContent = message;
+                document.body.appendChild(messageDiv);
+                
+                setTimeout(() => {
+                    messageDiv.remove();
+                }, 3000);
+            }
+            
+            // Multiselect functionality
+            function toggleMultiselectMode() {
+                multiselectMode = !multiselectMode;
+                selectedDatasets.clear();
+                
+                const toggleBtn = document.getElementById('multiselect-toggle');
+                const actionsDiv = document.getElementById('multiselect-actions');
+                
+                if (multiselectMode) {
+                    toggleBtn.classList.add('text-primary');
+                    actionsDiv.classList.remove('hidden');
+                    
+                    if (warningPreferences.show_multiselect_help) {
+                        showMultiselectHelp();
+                    }
+                } else {
+                    toggleBtn.classList.remove('text-primary');
+                    actionsDiv.classList.add('hidden');
+                }
+                
+                updateDatasetHistory();
+                updateSelectedCount();
+            }
+            
+            function showMultiselectHelp() {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+                        <!-- Close button -->
+                        <button class="absolute top-3 right-3 text-text-secondary hover:text-primary transition-colors" onclick="closeMultiselectHelp()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-primary">Multiselect Mode</h3>
+                                <p class="text-sm text-text-secondary">Select multiple datasets</p>
+                            </div>
+                        </div>
+                        <p class="text-text-primary mb-4">
+                            You can now select multiple datasets by clicking on them. 
+                            Selected datasets will be highlighted and you can delete them all at once.
+                        </p>
+                        <div class="flex items-center mb-4">
+                            <input type="checkbox" id="dont-show-multiselect-help" class="rounded border-border text-primary focus:ring-primary-300 mr-2">
+                            <label for="dont-show-multiselect-help" class="text-sm text-text-secondary">Don't show this help again</label>
+                        </div>
+                        <div class="flex justify-end">
+                            <button style="background-color: #3b82f6; color: white; border: 2px solid #2563eb; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer;" class="hover:bg-blue-600 transition-colors" onclick="closeMultiselectHelp()">
+                                Got it
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            window.closeMultiselectHelp = function() {
+                const dontShowAgain = document.getElementById('dont-show-multiselect-help')?.checked || false;
+                
+                if (dontShowAgain) {
+                    updateWarningPreference('multiselect', false);
+                }
+                
+                const modals = document.querySelectorAll('.fixed.inset-0');
+                modals.forEach(modal => {
+                    if (modal.classList.contains('bg-black')) {
+                        modal.remove();
+                    }
+                });
+            };
+            
+            window.toggleDatasetSelection = function(datasetId) {
+                if (selectedDatasets.has(datasetId)) {
+                    selectedDatasets.delete(datasetId);
+                } else {
+                    selectedDatasets.add(datasetId);
+                }
+                
+                updateDatasetHistory();
+                updateSelectedCount();
+            };
+            
+            function updateSelectedCount() {
+                const countElement = document.getElementById('selected-count');
+                if (countElement) {
+                    countElement.textContent = `${selectedDatasets.size} selected`;
+                }
+            }
+            
+            window.deleteSelectedDatasets = function() {
+                if (selectedDatasets.size === 0) return;
+                
+                const datasetNames = Array.from(selectedDatasets).map(id => {
+                    const dataset = datasets.find(d => d.id === id);
+                    return dataset ? dataset.name : 'Unknown';
+                });
+                
+                if (warningPreferences.show_delete_warning) {
+                    showDeleteMultipleWarning(Array.from(selectedDatasets), datasetNames);
+                } else {
+                    performDeleteMultiple(Array.from(selectedDatasets), datasetNames);
+                }
+            };
+            
+            function showDeleteMultipleWarning(datasetIds, datasetNames) {
+                const modal = document.createElement('div');
+                modal.className = 'fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center';
+                
+                // Store the data in the modal element for later use
+                modal.dataset.datasetIds = JSON.stringify(datasetIds);
+                modal.dataset.datasetNames = JSON.stringify(datasetNames);
+                
+                modal.innerHTML = `
+                    <div class="bg-white rounded-lg p-6 max-w-sm w-full mx-4 relative">
+                        <!-- Close button -->
+                        <button class="absolute top-3 right-3 text-text-secondary hover:text-primary transition-colors" onclick="closeDeleteMultipleModal()">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                            </svg>
+                        </button>
+                        
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center mr-3">
+                                <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                                </svg>
+                            </div>
+                            <div>
+                                <h3 class="text-lg font-semibold text-primary">Delete Multiple Datasets</h3>
+                                <p class="text-sm text-text-secondary">This action cannot be undone</p>
+                            </div>
+                        </div>
+                        <p class="text-text-primary mb-4">
+                            Are you sure you want to delete <strong>${datasetNames.length}</strong> datasets? 
+                            This will permanently remove them and all associated analysis history.
+                        </p>
+                        <div class="max-h-32 overflow-y-auto mb-4">
+                            <p class="text-sm text-text-secondary mb-2">Datasets to delete:</p>
+                            ${datasetNames.map(name => `<div class="text-sm text-text-primary">• ${name}</div>`).join('')}
+                        </div>
+                        <div class="flex items-center mb-4">
+                            <input type="checkbox" id="dont-show-again-multiple" class="rounded border-border text-primary focus:ring-primary-300 mr-2">
+                            <label for="dont-show-again-multiple" class="text-sm text-text-secondary">Don't show this warning again</label>
+                        </div>
+                        <div class="flex justify-end space-x-3">
+                            <button class="px-4 py-2 text-text-secondary hover:text-primary transition-colors" onclick="closeDeleteMultipleModal()">
+                                Cancel
+                            </button>
+                            <button style="background-color: #ef4444; color: white; border: 2px solid #dc2626; font-weight: 600; padding: 8px 16px; border-radius: 8px; cursor: pointer;" class="hover:bg-red-600 transition-colors" onclick="performDeleteMultipleFromModal()">
+                                Delete All
+                            </button>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            window.closeDeleteMultipleModal = function() {
+                const modals = document.querySelectorAll('.fixed.inset-0');
+                modals.forEach(modal => {
+                    if (modal.classList.contains('bg-black')) {
+                        modal.remove();
+                    }
+                });
+            };
+            
+            window.performDeleteMultipleFromModal = function() {
+                const modal = document.querySelector('.fixed.inset-0.bg-black');
+                if (!modal) return;
+                
+                const datasetIds = JSON.parse(modal.dataset.datasetIds);
+                const datasetNames = JSON.parse(modal.dataset.datasetNames);
+                
+                performDeleteMultiple(datasetIds, datasetNames);
+            };
+            
+            window.performDeleteMultiple = function(datasetIds, datasetNames) {
+                const dontShowAgain = document.getElementById('dont-show-again-multiple')?.checked || false;
+                
+                if (dontShowAgain) {
+                    updateWarningPreference('delete', false);
+                }
+                
+                closeDeleteMultipleModal();
+                
+                // Delete datasets one by one
+                let deletedCount = 0;
+                const totalCount = datasetIds.length;
+                
+                datasetIds.forEach((datasetId, index) => {
+                    const formData = new FormData();
+                    formData.append('dataset_id', datasetId);
+                    
+                    fetch('{% url "delete_dataset" %}', {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            deletedCount++;
+                            
+                            // Remove from datasets array
+                            const datasetIndex = datasets.findIndex(d => d.id === datasetId);
+                            if (datasetIndex !== -1) {
+                                datasets.splice(datasetIndex, 1);
+                                
+                                // Update current dataset index if needed
+                                if (currentDatasetIndex === datasetIndex) {
+                                    currentDatasetIndex = datasets.length > 0 ? 0 : -1;
+                                } else if (currentDatasetIndex > datasetIndex) {
+                                    currentDatasetIndex--;
+                                }
+                            }
+                            
+                            // If all deletions are complete
+                            if (deletedCount === totalCount) {
+                                // Update displays
+                                updateCurrentDatasetDisplay();
+                                updateDatasetHistory();
+                                updateDatasetCount();
+                                
+                                // Exit multiselect mode
+                                toggleMultiselectMode();
+                                
+                                // Show success message
+                                showSuccessMessage(`Successfully deleted ${deletedCount} datasets`);
+                            }
+                        } else {
+                            showErrorMessage(`Error deleting dataset: ${data.error}`);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error deleting dataset:', error);
+                        showErrorMessage('Error deleting datasets. Please try again.');
+                    });
+                });
             }
             
             function showSummaryStatistics() {

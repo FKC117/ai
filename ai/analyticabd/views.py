@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
-from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference
+from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference, AnalysisHistory, UserWarningPreference
 import pandas as pd
 import numpy as np
 import json
@@ -542,7 +542,108 @@ def record_interaction(request):
             metadata=metadata
         )
         
+        # Record analysis history if it's an analysis type
+        if interaction_type in ['summary_stats', 'linear_regression', 't_test', 'anova', 'correlation']:
+            AnalysisHistory.objects.get_or_create(
+                user=request.user,
+                dataset=user_pref.current_dataset,
+                analysis_type=interaction_type,
+                defaults={'is_complete': True}
+            )
+        
         return JsonResponse({'success': True, 'message': 'Interaction recorded'})
         
     except Exception as e:
         return JsonResponse({'error': f'Error recording interaction: {str(e)}'}, status=500)
+
+@login_required
+def get_analysis_history(request, dataset_id):
+    """Get analysis history for a specific dataset"""
+    try:
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        analysis_history = AnalysisHistory.objects.filter(
+            user=request.user,
+            dataset=dataset
+        ).values('analysis_type', 'created_at', 'is_complete')
+        
+        return JsonResponse({
+            'success': True,
+            'analysis_history': list(analysis_history)
+        })
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error getting analysis history: {str(e)}'}, status=500)
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def delete_dataset(request):
+    """Delete a dataset and all associated data"""
+    try:
+        dataset_id = request.POST.get('dataset_id')
+        if not dataset_id:
+            return JsonResponse({'error': 'Dataset ID is required'}, status=400)
+        
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        dataset_name = dataset.name
+        
+        # Delete the dataset (cascade will handle related objects)
+        dataset.delete()
+        
+        # Update user preferences if this was the current dataset
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        if user_pref.current_dataset and user_pref.current_dataset.id == int(dataset_id):
+            user_pref.current_dataset = None
+            user_pref.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Dataset "{dataset_name}" deleted successfully'
+        })
+        
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error deleting dataset: {str(e)}'}, status=500)
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def update_warning_preferences(request):
+    """Update user warning preferences"""
+    try:
+        warning_type = request.POST.get('warning_type')
+        show_warning = request.POST.get('show_warning', 'true').lower() == 'true'
+        
+        user_pref, created = UserWarningPreference.objects.get_or_create(user=request.user)
+        
+        if warning_type == 'delete':
+            user_pref.show_delete_warning = show_warning
+        elif warning_type == 'multiselect':
+            user_pref.show_multiselect_help = show_warning
+        
+        user_pref.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'Warning preferences updated'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error updating preferences: {str(e)}'}, status=500)
+
+@login_required
+def get_warning_preferences(request):
+    """Get user warning preferences"""
+    try:
+        user_pref, created = UserWarningPreference.objects.get_or_create(user=request.user)
+        
+        return JsonResponse({
+            'success': True,
+            'show_delete_warning': user_pref.show_delete_warning,
+            'show_multiselect_help': user_pref.show_multiselect_help
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error getting preferences: {str(e)}'}, status=500)

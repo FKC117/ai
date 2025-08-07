@@ -21,4 +21,8 @@ urlpatterns = [
     path('api/user-state/', views.get_user_state, name='get_user_state'),
     path('api/set-current-dataset/', views.set_current_dataset, name='set_current_dataset'),
     path('api/record-interaction/', views.record_interaction, name='record_interaction'),
+    path('api/analysis-history/<int:dataset_id>/', views.get_analysis_history, name='get_analysis_history'),
+    path('api/delete-dataset/', views.delete_dataset, name='delete_dataset'),
+    path('api/warning-preferences/', views.get_warning_preferences, name='get_warning_preferences'),
+    path('api/update-warning-preferences/', views.update_warning_preferences, name='update_warning_preferences'),
 ]

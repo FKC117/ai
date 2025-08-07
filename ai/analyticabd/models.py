@@ -129,3 +129,29 @@ class UserPreference(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - Preferences"
+
+class AnalysisHistory(models.Model):
+    """Track analysis history for each dataset"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='analysis_history')
+    dataset = models.ForeignKey(UserDataset, on_delete=models.CASCADE, related_name='analysis_history')
+    analysis_type = models.CharField(max_length=50)  # 'summary_stats', 'linear_regression', etc.
+    created_at = models.DateTimeField(auto_now_add=True)
+    is_complete = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+        unique_together = ['user', 'dataset', 'analysis_type']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.dataset.name} - {self.analysis_type}"
+
+class UserWarningPreference(models.Model):
+    """Store user preferences for warning dialogs"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='warning_preferences')
+    show_delete_warning = models.BooleanField(default=True)
+    show_multiselect_help = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - Warning Preferences"
