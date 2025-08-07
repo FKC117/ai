@@ -34,6 +34,110 @@
             transform: scale(1);
         }
     }
+    
+    /* Resizable chat panel styles */
+    .resizable-panel {
+        transition: width 0.1s ease-out;
+        min-width: 320px;
+        max-width: 800px;
+    }
+    
+    /* Resize handle styles - using Tailwind classes instead */
+    
+    /* Chat content resizing */
+    .chat-content-resizable {
+        transition: all 0.2s ease-out;
+    }
+    
+    .chat-message-expanded {
+        max-width: 100% !important;
+        width: 100% !important;
+    }
+    
+    .chat-input-expanded {
+        width: calc(100% - 1rem) !important;
+    }
+    
+    /* AI Response Formatting Styles */
+    .chat-content-resizable ul {
+        margin-left: 1rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .chat-content-resizable li {
+        margin-bottom: 0.25rem;
+    }
+    
+    .chat-content-resizable h3 {
+        color: #1e40af;
+        font-weight: 600;
+        margin-top: 1rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .chat-content-resizable h4 {
+        color: #1e40af;
+        font-weight: 600;
+        margin-top: 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    .chat-content-resizable code {
+        background-color: #f3f4f6;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        font-family: 'Courier New', monospace;
+        font-size: 0.75rem;
+    }
+    
+    .chat-content-resizable strong {
+        font-weight: 600;
+        color: #1e40af;
+    }
+    
+    .chat-content-resizable em {
+        font-style: italic;
+    }
+    
+    /* Table formatting */
+    .chat-content-resizable table {
+        border-collapse: collapse;
+        width: 100%;
+        margin: 0.5rem 0;
+    }
+    
+    .chat-content-resizable table td {
+        padding: 0.5rem;
+        border: 1px solid #d1d5db;
+        text-align: left;
+        vertical-align: top;
+        word-wrap: break-word;
+        max-width: 200px;
+    }
+    
+    .chat-content-resizable table tr:first-child td {
+        background-color: #f3f4f6;
+        font-weight: 600;
+        color: #1e40af;
+    }
+    
+    /* Better text wrapping for long content */
+    .chat-content-resizable p {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+    }
+    
+    .chat-content-resizable li {
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+    }
+    
+    /* Ensure proper spacing for long content */
+    .chat-content-resizable {
+        overflow-wrap: break-word;
+        word-wrap: break-word;
+    }
 </style>
 </head>
 <body class="bg-background">
@@ -622,7 +726,7 @@
         </div>
 
         <!-- Center Panel - Analysis Workspace -->
-        <div class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-hidden" style="flex: 3;">
             <div class="h-full flex flex-col">
                 <!-- Dataset Upload Section -->
                 <div class="bg-white border-b border-border-light p-4" id="upload-section">
@@ -863,7 +967,9 @@
         </div>
 
         <!-- Right Panel - AI Chat Interface -->
-        <div class="w-96 bg-white border-l border-border-light flex flex-col" id="right-panel">
+        <div class="flex-1 bg-white border-l border-border-light flex flex-col relative" id="right-panel" style="flex: 2;">
+            <!-- Resize Handle -->
+            <div class="absolute left-0 top-0 bottom-0 w-3 bg-gray-300 hover:bg-blue-500 active:bg-blue-600 border-r border-gray-400 transition-colors z-10 select-none" id="resize-handle" title="Drag to resize" style="cursor: col-resize;"></div>
             <!-- Chat Header -->
             <div class="p-4 border-b border-border-light">
                 <div class="flex items-center justify-between">
@@ -895,14 +1001,14 @@
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                         <p class="text-sm text-text-primary">Hi! I'm here to help you interpret your dataset summary statistics. I can help you understand the data quality, distribution patterns, and variable characteristics. What would you like to explore?</p>
                     </div>
                 </div>
 
                 <!-- User Message -->
                 <div class="flex items-start justify-end">
-                    <div class="bg-primary rounded-lg p-3 max-w-xs">
+                    <div class="bg-primary rounded-lg p-3 max-w-full chat-content-resizable">
                         <p class="text-sm text-white">What does the R-squared value tell me about my model?</p>
                     </div>
                     <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
@@ -917,7 +1023,7 @@
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                         <p class="text-sm text-text-primary mb-2">Great question! Your R² of 0.847 means that 84.7% of the variation in revenue can be explained by your model variables (marketing spend and seasonality).</p>
                         <p class="text-sm text-text-primary mb-2">This is considered a <strong>strong relationship</strong> in business analytics. It suggests your model is quite reliable for predictions.</p>
                         <div class="bg-white rounded p-2 mt-2 border border-accent-200">
@@ -928,7 +1034,7 @@
 
                 <!-- User Message -->
                 <div class="flex items-start justify-end">
-                    <div class="bg-primary rounded-lg p-3 max-w-xs">
+                    <div class="bg-primary rounded-lg p-3 max-w-full chat-content-resizable">
                         <p class="text-sm text-white">Should I be concerned about any assumptions in my regression model?</p>
                     </div>
                     <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
@@ -943,7 +1049,7 @@
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                         <p class="text-sm text-text-primary mb-2">Excellent thinking! Let me check the key assumptions:</p>
                         <div class="space-y-2">
                             <div class="flex items-center text-xs">
@@ -1031,7 +1137,7 @@
             const uploadProgress = document.getElementById('upload-progress');
             const progressBar = document.getElementById('progress-bar');
             const progressText = document.getElementById('progress-text');
-            const uploadArea = document.querySelector('.border-dashed');
+            const uploadArea = document.getElementById('upload-area');
             const uploadSection = document.getElementById('upload-section');
             const minimizedUpload = document.getElementById('minimized-upload');
             const expandUploadBtn = document.getElementById('expand-upload');
@@ -1335,6 +1441,22 @@
                 }).join('');
             }
             
+            // Debug: Check if upload area is found
+            console.log('Upload area found:', uploadArea);
+            console.log('File upload element found:', fileUpload);
+            console.log('Upload section found:', uploadSection);
+            console.log('Minimized upload found:', minimizedUpload);
+            
+            // Check if elements are visible
+            if (uploadArea) {
+                console.log('Upload area classes:', uploadArea.className);
+                console.log('Upload area style display:', uploadArea.style.display);
+            }
+            if (uploadSection) {
+                console.log('Upload section classes:', uploadSection.className);
+                console.log('Upload section hidden:', uploadSection.classList.contains('hidden'));
+            }
+            
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', function(e) {
                 e.preventDefault();
@@ -1357,12 +1479,26 @@
             
             // File input change
             fileUpload.addEventListener('change', function(e) {
+                console.log('File input change event triggered');
                 if (e.target.files.length > 0) {
+                    console.log('File selected:', e.target.files[0].name);
                     handleFileUpload(e.target.files[0]);
                 }
             });
             
+            // Add click handler to upload area for testing
+            uploadArea.addEventListener('click', function(e) {
+                console.log('Upload area clicked');
+                // Don't trigger file input if clicking on the label
+                if (e.target.tagName !== 'LABEL' && e.target.tagName !== 'INPUT') {
+                    console.log('Clicking file input');
+                    fileUpload.click();
+                }
+            });
+            
             function handleFileUpload(file) {
+                console.log('handleFileUpload called with file:', file.name);
+                
                 // Validate file type
                 const allowedTypes = ['.csv', '.xlsx', '.xls', '.json'];
                 const fileExtension = '.' + file.name.split('.').pop().toLowerCase();
@@ -2395,7 +2531,7 @@
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                             <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
                         </div>
                     `;
@@ -2423,7 +2559,7 @@
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                             <p class="text-sm text-text-primary">⚠️ Please upload a dataset first before passing data to AI.</p>
                         </div>
                     `;
@@ -2436,17 +2572,17 @@
                 const message = chatInput.value.trim();
                 if (!message) return;
                 
-                // Add user message to UI
-                const userMessage = document.createElement('div');
-                userMessage.className = 'flex items-start justify-end';
-                userMessage.innerHTML = `
-                    <div class="bg-primary rounded-lg p-3 max-w-xs">
-                        <p class="text-sm text-white">${message}</p>
-                    </div>
-                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
-                        ${userInitials || 'U'}
-                    </div>
-                `;
+                                    // Add user message to UI
+                    const userMessage = document.createElement('div');
+                    userMessage.className = 'flex items-start justify-end';
+                    userMessage.innerHTML = `
+                        <div class="bg-primary rounded-lg p-3 max-w-full chat-content-resizable">
+                            <p class="text-sm text-white">${message}</p>
+                        </div>
+                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
+                            ${userInitials || 'U'}
+                        </div>
+                    `;
                 chatMessages.appendChild(userMessage);
                 
                 // Store in conversation history
@@ -2468,7 +2604,7 @@
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                         <div class="flex space-x-1">
                             <div class="w-2 h-2 bg-accent rounded-full animate-bounce"></div>
                             <div class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
@@ -2513,8 +2649,8 @@
                                     <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
-                            <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
-                                <p class="text-sm text-text-primary">${data.response}</p>
+                            <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                                <div class="text-sm text-text-primary">${formatAIResponse(data.response)}</div>
                             </div>
                         `;
                         chatMessages.appendChild(aiResponse);
@@ -2532,10 +2668,10 @@
                         errorResponse.innerHTML = `
                             <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                                 <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </div>
-                            <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                            <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                                 <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
                             </div>
                         `;
@@ -2557,7 +2693,7 @@
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
                             <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
                         </div>
                     `;
@@ -2565,6 +2701,59 @@
                 }
                 
                 chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            // Helper function to format AI responses with proper HTML structure
+            function formatAIResponse(response) {
+                // Convert markdown-style formatting to HTML
+                let formattedResponse = response
+                    // Convert **text** to <strong>text</strong>
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    // Convert *text* to <em>text</em>
+                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                    // Convert bullet points to proper HTML lists
+                    .replace(/^\s*•\s*(.*)$/gm, '<li>$1</li>')
+                    .replace(/^\s*-\s*(.*)$/gm, '<li>$1</li>')
+                    // Convert numbered lists
+                    .replace(/^\s*(\d+)\.\s*(.*)$/gm, '<li>$2</li>')
+                    // Convert headers (## text to h3)
+                    .replace(/^##\s*(.*)$/gm, '<h3 class="text-base font-semibold text-primary mb-2 mt-3">$1</h3>')
+                    // Convert subheaders (### text to h4)
+                    .replace(/^###\s*(.*)$/gm, '<h4 class="text-sm font-semibold text-primary mb-1 mt-2">$1</h4>')
+                    // Convert code blocks
+                    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+                
+                // Format tables - convert markdown tables to HTML tables
+                formattedResponse = formattedResponse.replace(/\|(.+)\|/g, function(match, row) {
+                    const cells = row.split('|').map(cell => cell.trim());
+                    return '<tr>' + cells.map(cell => `<td class="px-2 py-1 border border-gray-300 text-xs">${cell}</td>`).join('') + '</tr>';
+                });
+                
+                // Wrap table rows in proper table structure
+                formattedResponse = formattedResponse.replace(/(<tr>.*<\/tr>)/gs, function(match) {
+                    return '<div class="overflow-x-auto mb-3"><table class="min-w-full border border-gray-300 text-xs">' + match + '</table></div>';
+                });
+                
+                // Handle table headers (lines with dashes after table rows)
+                formattedResponse = formattedResponse.replace(/\|(\s*[-:]+\s*\|)+/g, '');
+                
+                // Wrap lists in proper HTML structure
+                formattedResponse = formattedResponse
+                    .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 mb-3">$1</ul>')
+                    .replace(/<\/ul>\s*<ul/g, '</ul><ul');
+                
+                // Split into paragraphs and wrap in proper HTML
+                const paragraphs = formattedResponse.split('\n\n').filter(p => p.trim());
+                const formattedParagraphs = paragraphs.map(p => {
+                    if (p.startsWith('<h3') || p.startsWith('<h4') || p.startsWith('<ul') || p.startsWith('<div class="overflow-x-auto')) {
+                        return p;
+                    } else if (p.trim()) {
+                        return `<p class="text-sm text-text-primary mb-2 leading-relaxed">${p}</p>`;
+                    }
+                    return '';
+                }).join('');
+                
+                return formattedParagraphs;
             }
             
             // Helper function to get CSRF token
@@ -2596,19 +2785,211 @@
             // Mobile responsiveness
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
             const mobileOverlay = document.getElementById('mobile-overlay');
-            const leftPanel = document.getElementById('left-panel');
-            const rightPanel = document.getElementById('right-panel');
+            
+            // Chat Panel Resizing Functionality
+            const resizeHandle = document.getElementById('resize-handle');
+            
+            let isResizing = false;
+            let startX = 0;
+            let startWidth = 0;
+            let originalWidth = 384; // w-96 = 24rem = 384px
+            
+            // Initialize resizable functionality
+            function initializeResizableChat() {
+                const chatPanel = document.getElementById('right-panel');
+                if (!chatPanel || !resizeHandle) {
+                    console.log('Resize initialization failed:', { chatPanel: !!chatPanel, resizeHandle: !!resizeHandle });
+                    return;
+                }
+                
+                console.log('Initializing resizable chat...');
+                
+                // Add resizable class to panel
+                chatPanel.classList.add('resizable-panel');
+                
+                // Store original width
+                originalWidth = chatPanel.offsetWidth;
+                console.log('Original width:', originalWidth);
+                
+                // Add event listeners for resize handle
+                resizeHandle.addEventListener('mousedown', startResize);
+                document.addEventListener('mousemove', resize);
+                document.addEventListener('mouseup', stopResize);
+                
+                // Add double-click to reset size
+                resizeHandle.addEventListener('dblclick', resetChatSize);
+                
+                // Add click event for testing
+                resizeHandle.addEventListener('click', function(e) {
+                    console.log('Resize handle clicked!');
+                    e.stopPropagation();
+                });
+                
+                // Add keyboard shortcuts
+                document.addEventListener('keydown', handleKeyboardShortcuts);
+                
+                console.log('Resize event listeners attached successfully');
+            }
+            
+            function startResize(e) {
+                console.log('Start resize triggered');
+                const chatPanel = document.getElementById('right-panel');
+                if (!chatPanel) {
+                    console.log('Chat panel not found in startResize');
+                    return;
+                }
+                
+                isResizing = true;
+                startX = e.clientX;
+                startWidth = chatPanel.offsetWidth;
+                
+                console.log('Resize started:', { startX, startWidth });
+                
+                // Add visual feedback
+                document.body.style.cursor = 'col-resize';
+                resizeHandle.style.backgroundColor = '#2563eb';
+                
+                // Prevent text selection
+                e.preventDefault();
+            }
+            
+            function resize(e) {
+                if (!isResizing) return;
+                
+                const chatPanel = document.getElementById('right-panel');
+                if (!chatPanel) return;
+                
+                const deltaX = startX - e.clientX;
+                const newWidth = startWidth + deltaX;
+                
+                // Apply constraints
+                const minWidth = 320;
+                const maxWidth = 800;
+                const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+                
+                // Update panel width
+                chatPanel.style.width = constrainedWidth + 'px';
+                
+                // Update chat content sizing
+                updateChatContentSizing(constrainedWidth);
+                
+                console.log('Resizing:', { deltaX, newWidth, constrainedWidth });
+            }
+            
+            function stopResize() {
+                if (!isResizing) return;
+                
+                const chatPanel = document.getElementById('right-panel');
+                if (chatPanel) {
+                    localStorage.setItem('chatPanelWidth', chatPanel.offsetWidth);
+                }
+                
+                isResizing = false;
+                
+                // Remove visual feedback
+                document.body.style.cursor = '';
+                resizeHandle.style.backgroundColor = '';
+            }
+            
+            function resetChatSize() {
+                const chatPanel = document.getElementById('right-panel');
+                if (chatPanel) {
+                    chatPanel.style.width = originalWidth + 'px';
+                    updateChatContentSizing(originalWidth);
+                    localStorage.removeItem('chatPanelWidth');
+                }
+            }
+            
+            function updateChatContentSizing(width) {
+                const isExpanded = width > 500;
+                
+                // Update message containers
+                const chatMessages = document.getElementById('chat-messages');
+                const chatInput = document.getElementById('chat-input');
+                
+                if (chatMessages) {
+                    const messageContainers = chatMessages.querySelectorAll('.bg-accent-50, .bg-primary');
+                    messageContainers.forEach(container => {
+                        if (isExpanded) {
+                            container.classList.add('chat-message-expanded');
+                            container.classList.remove('max-w-xs');
+                        } else {
+                            container.classList.remove('chat-message-expanded');
+                            container.classList.add('max-w-xs');
+                        }
+                    });
+                }
+                
+                // Update input field
+                if (chatInput) {
+                    if (isExpanded) {
+                        chatInput.classList.add('chat-input-expanded');
+                    } else {
+                        chatInput.classList.remove('chat-input-expanded');
+                    }
+                }
+            }
+            
+            function handleKeyboardShortcuts(e) {
+                // Ctrl/Cmd + R to reset chat size
+                if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                    e.preventDefault();
+                    resetChatSize();
+                }
+                
+                // Ctrl/Cmd + Shift + R to toggle between original and expanded
+                if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'R') {
+                    e.preventDefault();
+                    const chatPanel = document.getElementById('right-panel');
+                    if (chatPanel) {
+                        const currentWidth = chatPanel.offsetWidth;
+                        if (currentWidth > originalWidth) {
+                            resetChatSize();
+                        } else {
+                            chatPanel.style.width = '600px';
+                            updateChatContentSizing(600);
+                        }
+                    }
+                }
+            }
+            
+            // Load saved size on page load
+            function loadSavedChatSize() {
+                const chatPanel = document.getElementById('right-panel');
+                if (!chatPanel) return;
+                
+                const savedWidth = localStorage.getItem('chatPanelWidth');
+                if (savedWidth) {
+                    const width = parseInt(savedWidth);
+                    if (width >= 320 && width <= 800) {
+                        chatPanel.style.width = width + 'px';
+                        updateChatContentSizing(width);
+                    }
+                }
+            }
+            
+            // Initialize resizable chat on page load
+            initializeResizableChat();
+            loadSavedChatSize();
             
             mobileMenuBtn.addEventListener('click', function() {
-                leftPanel.classList.toggle('hidden');
-                rightPanel.classList.toggle('hidden');
-                mobileOverlay.classList.toggle('hidden');
+                const leftPanel = document.getElementById('left-panel');
+                const rightPanel = document.getElementById('right-panel');
+                if (leftPanel && rightPanel) {
+                    leftPanel.classList.toggle('hidden');
+                    rightPanel.classList.toggle('hidden');
+                    mobileOverlay.classList.toggle('hidden');
+                }
             });
             
             mobileOverlay.addEventListener('click', function() {
-                leftPanel.classList.add('hidden');
-                rightPanel.classList.add('hidden');
-                mobileOverlay.classList.add('hidden');
+                const leftPanel = document.getElementById('left-panel');
+                const rightPanel = document.getElementById('right-panel');
+                if (leftPanel && rightPanel) {
+                    leftPanel.classList.add('hidden');
+                    rightPanel.classList.add('hidden');
+                    mobileOverlay.classList.add('hidden');
+                }
             });
             
             // Contextual help
@@ -2778,6 +3159,5 @@
             }, 500);
         }
     </script>
-<script id="dhws-dataInjector" src="../public/dhws-data-injector.js"></script>
 </body>
 </html>
