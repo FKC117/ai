@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
-from .models import UserDataset, DatasetVariable
+from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference
 import pandas as pd
 import numpy as np
 import json
@@ -254,6 +254,33 @@ def upload_dataset(request):
         dataset.outliers_count = total_outliers
         dataset.save()
         
+        # Create or update user preferences to set this as current dataset
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        user_pref.current_dataset = dataset
+        user_pref.save()
+        
+        # Create analysis session for this upload
+        session = AnalysisSession.objects.create(
+            user=request.user,
+            dataset=dataset,
+            session_name=f"Analysis of {uploaded_file.name}"
+        )
+        
+        # Record the upload interaction
+        AnalysisInteraction.objects.create(
+            session=session,
+            interaction_type='upload',
+            description=f"Uploaded dataset: {uploaded_file.name} with {rows} rows and {cols} columns",
+            metadata={
+                'file_size': uploaded_file.size,
+                'file_type': file_extension,
+                'rows': rows,
+                'columns': cols,
+                'numeric_columns': numeric_cols,
+                'categorical_columns': categorical_cols
+            }
+        )
+        
         return JsonResponse({
             'success': True,
             'dataset_id': dataset.id,
@@ -261,7 +288,8 @@ def upload_dataset(request):
             'rows': rows,
             'columns': cols,
             'file_size': f"{uploaded_file.size / (1024 * 1024):.1f} MB",
-            'message': f'Dataset "{uploaded_file.name}" uploaded successfully!'
+            'message': f'Dataset "{uploaded_file.name}" uploaded successfully!',
+            'session_id': session.id
         })
         
     except Exception as e:
@@ -333,6 +361,29 @@ def get_summary_statistics(request, dataset_id):
             'variable_summary': variable_summary
         }
         
+        # Record this interaction if there's an active session
+        try:
+            active_session = AnalysisSession.objects.filter(
+                user=request.user, 
+                dataset=dataset, 
+                is_active=True
+            ).latest('updated_at')
+            
+            AnalysisInteraction.objects.create(
+                session=active_session,
+                interaction_type='summary_stats',
+                description=f"Viewed summary statistics for dataset: {dataset.name}",
+                metadata={
+                    'total_rows': dataset.rows,
+                    'total_columns': dataset.columns,
+                    'numeric_columns': dataset.numeric_columns,
+                    'missing_percentage': dataset.missing_values_percentage,
+                    'outliers_count': dataset.outliers_count
+                }
+            )
+        except AnalysisSession.DoesNotExist:
+            pass  # No active session, that's okay
+        
         print(f"Debug: Sending summary data for dataset {dataset_id}")
         print(f"Debug: Variable summary has {len(variable_summary)} variables")
         for var in variable_summary[:3]:  # Print first 3 variables for debugging
@@ -363,3 +414,135 @@ def get_user_datasets(request):
         })
     
     return JsonResponse({'datasets': dataset_list})
+
+@login_required
+def get_user_state(request):
+    """Get user's current state including datasets and preferences"""
+    try:
+        # Get user preferences
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        
+        # Get all datasets
+        datasets = UserDataset.objects.filter(user=request.user, is_active=True)
+        dataset_list = []
+        
+        for dataset in datasets:
+            dataset_list.append({
+                'id': dataset.id,
+                'name': dataset.name,
+                'rows': dataset.rows,
+                'columns': dataset.columns,
+                'file_size': f"{dataset.file_size / (1024 * 1024):.1f} MB",
+                'uploaded_at': dataset.uploaded_at.strftime('%b %d, %Y')
+            })
+        
+        # Get current dataset index
+        current_dataset_index = -1
+        if user_pref.current_dataset:
+            for i, dataset in enumerate(dataset_list):
+                if dataset['id'] == user_pref.current_dataset.id:
+                    current_dataset_index = i
+                    break
+        
+        # Get recent analysis sessions
+        recent_sessions = AnalysisSession.objects.filter(
+            user=request.user, 
+            is_active=True
+        )[:5]  # Last 5 sessions
+        
+        session_list = []
+        for session in recent_sessions:
+            session_list.append({
+                'id': session.id,
+                'name': session.session_name,
+                'dataset_name': session.dataset.name,
+                'created_at': session.created_at.strftime('%b %d, %Y'),
+                'updated_at': session.updated_at.strftime('%b %d, %Y')
+            })
+        
+        return JsonResponse({
+            'datasets': dataset_list,
+            'current_dataset_index': current_dataset_index,
+            'default_analysis_type': user_pref.default_analysis_type,
+            'recent_sessions': session_list
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error loading user state: {str(e)}'}, status=500)
+
+@login_required
+def set_current_dataset(request):
+    """Set the current dataset for the user"""
+    try:
+        dataset_id = request.POST.get('dataset_id')
+        if not dataset_id:
+            return JsonResponse({'error': 'Dataset ID is required'}, status=400)
+        
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        
+        # Update user preferences
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        user_pref.current_dataset = dataset
+        user_pref.save()
+        
+        # Create or update analysis session
+        session, created = AnalysisSession.objects.get_or_create(
+            user=request.user,
+            dataset=dataset,
+            is_active=True,
+            defaults={'session_name': f"Analysis of {dataset.name}"}
+        )
+        
+        if not created:
+            session.updated_at = datetime.now()
+            session.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'Current dataset set to: {dataset.name}',
+            'session_id': session.id
+        })
+        
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error setting current dataset: {str(e)}'}, status=500)
+
+@login_required
+def record_interaction(request):
+    """Record an analysis interaction for LLM context"""
+    try:
+        interaction_type = request.POST.get('type')
+        description = request.POST.get('description')
+        metadata = json.loads(request.POST.get('metadata', '{}'))
+        
+        # Get current session
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        if not user_pref.current_dataset:
+            return JsonResponse({'error': 'No current dataset'}, status=400)
+        
+        session = AnalysisSession.objects.filter(
+            user=request.user,
+            dataset=user_pref.current_dataset,
+            is_active=True
+        ).first()
+        
+        if not session:
+            session = AnalysisSession.objects.create(
+                user=request.user,
+                dataset=user_pref.current_dataset,
+                session_name=f"Analysis of {user_pref.current_dataset.name}"
+            )
+        
+        # Record the interaction
+        AnalysisInteraction.objects.create(
+            session=session,
+            interaction_type=interaction_type,
+            description=description,
+            metadata=metadata
+        )
+        
+        return JsonResponse({'success': True, 'message': 'Interaction recorded'})
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error recording interaction: {str(e)}'}, status=500)

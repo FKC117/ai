@@ -89,3 +89,43 @@ class DatasetVariable(models.Model):
     
     def __str__(self):
         return f"{self.dataset.name} - {self.name}"
+
+class AnalysisSession(models.Model):
+    """Store analysis sessions for LLM context"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='analysis_sessions')
+    dataset = models.ForeignKey(UserDataset, on_delete=models.CASCADE, related_name='analysis_sessions')
+    session_name = models.CharField(max_length=255, default='Analysis Session')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_active = models.BooleanField(default=True)
+    
+    class Meta:
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.dataset.name} - {self.session_name}"
+
+class AnalysisInteraction(models.Model):
+    """Store individual interactions for LLM context"""
+    session = models.ForeignKey(AnalysisSession, on_delete=models.CASCADE, related_name='interactions')
+    interaction_type = models.CharField(max_length=50)  # 'upload', 'summary_stats', 'chart_view', 'llm_query'
+    description = models.TextField()
+    metadata = models.JSONField(default=dict, blank=True)  # Store additional context
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"{self.session.session_name} - {self.interaction_type} - {self.created_at}"
+
+class UserPreference(models.Model):
+    """Store user preferences and settings"""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
+    current_dataset = models.ForeignKey(UserDataset, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_for_users')
+    default_analysis_type = models.CharField(max_length=50, default='summary_stats')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    def __str__(self):
+        return f"{self.user.username} - Preferences"

@@ -68,7 +68,7 @@
                     <!-- Main Navigation -->
                     <div class="hidden md:flex items-center space-x-4">
                         <a href="{% url 'homepage' %}" class="text-text-secondary hover:text-primary transition-colors">Home</a>
-                        <a href="{% url 'pricing' %}" class="text-text-secondary hover:text-primary transition-colors">Pricing</a>
+                        <a href="{% url 'pricing_plans' %}" class="text-text-secondary hover:text-primary transition-colors">Pricing</a>
                         <a href="{% url 'getting_started' %}" class="text-text-secondary hover:text-primary transition-colors">Get Started</a>
                         <a href="{% url 'account_management' %}" class="text-text-secondary hover:text-primary transition-colors">Account</a>
                     </div>
@@ -670,7 +670,7 @@
                 </div>
 
                 <!-- Visualization Area -->
-                <div class="flex-1 p-6 overflow-auto">
+                <div class="flex-1 p-6 overflow-auto" id="workspace-content">
                     <!-- Chart Tabs -->
                     <div class="flex space-x-1 mb-6 border-b border-border-light">
                         <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-distributions">
@@ -977,18 +977,106 @@
             
             // Dataset storage
             let datasets = [];
-            let currentDatasetIndex = 0;
+            let currentDatasetIndex = -1; // Start with no dataset selected
             
-            // Initialize with default dataset
-            const defaultDataset = {
-                name: 'Sales Performance Q4 2024',
-                rows: 1247,
-                columns: 8,
-                size: '2.4 MB',
-                updated: 'Jan 3, 2025',
-                file: null
-            };
-            datasets.push(defaultDataset);
+            // Load user state from backend
+            loadUserState();
+            
+            // Function to load user state
+            function loadUserState() {
+                fetch('{% url "get_user_state" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            console.error('Error loading user state:', data.error);
+                            showBlankState();
+                            return;
+                        }
+                        
+                        // Load datasets
+                        datasets = data.datasets || [];
+                        currentDatasetIndex = data.current_dataset_index || -1;
+                        
+                        // Update displays
+                        updateCurrentDatasetDisplay();
+                        updateDatasetHistory();
+                        updateDatasetCount();
+                        
+                        // Show appropriate state
+                        if (datasets.length === 0 || currentDatasetIndex === -1) {
+                            showBlankState();
+                        } else {
+                            // Remove blank state if it exists
+                            const blankStateMessage = document.querySelector('.blank-state-message');
+                            if (blankStateMessage) {
+                                blankStateMessage.remove();
+                            }
+                        }
+                        
+                        console.log('User state loaded:', {
+                            datasets: datasets.length,
+                            currentIndex: currentDatasetIndex
+                        });
+                    })
+                    .catch(error => {
+                        console.error('Error loading user state:', error);
+                        showBlankState();
+                    });
+            }
+            
+            // Function to save current dataset selection
+            function saveCurrentDataset(datasetId) {
+                const formData = new FormData();
+                formData.append('dataset_id', datasetId);
+                
+                fetch('{% url "set_current_dataset" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Current dataset saved:', data.message);
+                    } else {
+                        console.error('Error saving current dataset:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving current dataset:', error);
+                });
+            }
+            
+            // Function to record interaction
+            function recordInteraction(type, description, metadata = {}) {
+                const formData = new FormData();
+                formData.append('type', type);
+                formData.append('description', description);
+                formData.append('metadata', JSON.stringify(metadata));
+                
+                fetch('{% url "record_interaction" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('Interaction recorded:', type);
+                    } else {
+                        console.error('Error recording interaction:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error recording interaction:', error);
+                });
+            }
+            
+
             
             // Expand upload section
             expandUploadBtn.addEventListener('click', function() {
@@ -1035,6 +1123,18 @@
             // Global functions for dataset switching
             window.switchDataset = function(index) {
                 currentDatasetIndex = index;
+                
+                // Save current dataset to backend
+                if (datasets[index]) {
+                    saveCurrentDataset(datasets[index].id);
+                    
+                    // Record the dataset switch interaction
+                    recordInteraction('dataset_switch', `Switched to dataset: ${datasets[index].name}`, {
+                        dataset_id: datasets[index].id,
+                        dataset_name: datasets[index].name
+                    });
+                }
+                
                 updateCurrentDatasetDisplay();
                 closeDatasetSelector();
             };
@@ -1047,6 +1147,16 @@
             };
             
             function updateCurrentDatasetDisplay() {
+                if (currentDatasetIndex === -1 || datasets.length === 0) {
+                    // No dataset selected, show placeholder or blank state
+                    document.getElementById('dataset-name').textContent = 'No dataset selected';
+                    document.getElementById('dataset-rows').textContent = '0';
+                    document.getElementById('dataset-columns').textContent = '0';
+                    document.getElementById('dataset-size').textContent = '0 MB';
+                    document.getElementById('dataset-updated').textContent = 'N/A';
+                    return;
+                }
+                
                 const currentDataset = datasets[currentDatasetIndex];
                 document.getElementById('dataset-name').textContent = currentDataset.name;
                 document.getElementById('dataset-rows').textContent = currentDataset.rows.toLocaleString();
@@ -1056,6 +1166,18 @@
             }
             
             function updateDatasetHistory() {
+                if (datasets.length === 0) {
+                    datasetHistory.innerHTML = `
+                        <div class="text-center py-4 text-text-secondary">
+                            <svg class="w-8 h-8 mx-auto mb-2 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <p class="text-sm">No datasets uploaded yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 datasetHistory.innerHTML = datasets.map((dataset, index) => `
                     <div class="flex items-center justify-between p-2 border border-border-light rounded-lg hover:bg-surface cursor-pointer ${index === currentDatasetIndex ? 'bg-primary-50 border-primary' : ''}" onclick="switchDataset(${index})">
                         <div class="flex items-center">
@@ -1071,9 +1193,6 @@
                     </div>
                 `).join('');
             }
-            
-            // Initialize dataset history
-            updateDatasetHistory();
             
             // Drag and drop functionality
             uploadArea.addEventListener('dragover', function(e) {
@@ -1191,6 +1310,17 @@
                 // Set as current dataset
                 currentDatasetIndex = datasets.length - 1;
                 
+                // Save current dataset to backend
+                saveCurrentDataset(newDataset.id);
+                
+                // Record the upload interaction
+                recordInteraction('upload', `Uploaded dataset: ${newDataset.name}`, {
+                    dataset_id: newDataset.id,
+                    rows: newDataset.rows,
+                    columns: newDataset.columns,
+                    file_size: newDataset.size
+                });
+                
                 // Update displays
                 updateCurrentDatasetDisplay();
                 updateDatasetHistory();
@@ -1203,11 +1333,12 @@
             }
             
             function updateDatasetCount() {
-                datasetCount.textContent = `${datasets.length} dataset${datasets.length > 1 ? 's' : ''} loaded`;
+                if (datasets.length === 0) {
+                    datasetCount.textContent = 'No datasets loaded';
+                } else {
+                    datasetCount.textContent = `${datasets.length} dataset${datasets.length > 1 ? 's' : ''} loaded`;
+                }
             }
-            
-            // Initialize dataset count
-            updateDatasetCount();
             
             // Statistical test selection functionality
             const statisticalTestBtns = document.querySelectorAll('.statistical-test-btn');
@@ -1248,17 +1379,89 @@
                 document.getElementById('summary-statistics-content').classList.add('hidden');
                 document.getElementById('main-chart-container').classList.add('hidden');
                 
+                // Check if there's a current dataset
+                if (datasets.length === 0 || currentDatasetIndex === -1) {
+                    // No dataset uploaded, show blank state
+                    showBlankState();
+                    return;
+                }
+                
+                // Remove blank state message if it exists
+                const blankStateMessage = document.querySelector('.blank-state-message');
+                if (blankStateMessage) {
+                    blankStateMessage.remove();
+                }
+                
+                // Record the analysis type interaction
+                const currentDataset = datasets[currentDatasetIndex];
+                if (currentDataset) {
+                    recordInteraction('analysis_type', `Selected analysis type: ${testType}`, {
+                        dataset_id: currentDataset.id,
+                        dataset_name: currentDataset.name,
+                        analysis_type: testType
+                    });
+                }
+                
                 // Show appropriate content based on test type
                 if (testType === 'summary-stats') {
                     showSummaryStatistics();
                 } else {
                     // For other tests, show the main chart container
                     document.getElementById('main-chart-container').classList.remove('hidden');
-                    updateChart('tab-regression');
+                    updateChart(testType);
+                }
+            }
+            
+            function showBlankState() {
+                // Hide all content sections
+                document.getElementById('summary-statistics-content').classList.add('hidden');
+                document.getElementById('main-chart-container').classList.add('hidden');
+                
+                // Show blank state message
+                const workspaceContent = document.getElementById('workspace-content');
+                const existingBlankState = workspaceContent.querySelector('.blank-state-message');
+                
+                if (!existingBlankState) {
+                    const blankStateDiv = document.createElement('div');
+                    blankStateDiv.className = 'blank-state-message flex flex-col items-center justify-center h-full py-12';
+                    blankStateDiv.innerHTML = `
+                        <div class="w-24 h-24 bg-accent-50 rounded-full flex items-center justify-center mb-6">
+                            <svg class="w-12 h-12 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-semibold text-primary mb-2">Start Your Analysis</h3>
+                        <p class="text-text-secondary text-center max-w-md mb-6">
+                            Upload a dataset and select a statistical test from the left panel to begin your analysis.
+                        </p>
+                        <div class="flex space-x-4">
+                            <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors" onclick="scrollToUpload()">
+                                Upload Dataset
+                            </button>
+                            <button class="px-6 py-2 border border-border-light text-text-primary rounded-lg hover:bg-surface transition-colors" onclick="showDatasetHistory()">
+                                View History
+                            </button>
+                        </div>
+                    `;
+                    workspaceContent.appendChild(blankStateDiv);
+                }
+            }
+            
+            function scrollToUpload() {
+                // Scroll to the upload section
+                const uploadSection = document.getElementById('upload-section');
+                if (uploadSection) {
+                    uploadSection.scrollIntoView({ behavior: 'smooth' });
                 }
             }
             
             function showSummaryStatistics() {
+                // Remove blank state message if it exists
+                const blankStateMessage = document.querySelector('.blank-state-message');
+                if (blankStateMessage) {
+                    blankStateMessage.remove();
+                }
+                
                 // Show summary statistics content
                 document.getElementById('summary-statistics-content').classList.remove('hidden');
                 document.getElementById('main-chart-container').classList.add('hidden');
@@ -1266,6 +1469,16 @@
                 // Get current dataset
                 const currentDataset = datasets[currentDatasetIndex];
                 console.log('Debug: Current dataset:', currentDataset);
+                
+                // Record the summary statistics interaction
+                if (currentDataset) {
+                    recordInteraction('summary_stats', `Viewed summary statistics for dataset: ${currentDataset.name}`, {
+                        dataset_id: currentDataset.id,
+                        dataset_name: currentDataset.name,
+                        rows: currentDataset.rows,
+                        columns: currentDataset.columns
+                    });
+                }
                 
                 // Fetch summary statistics from backend
                 fetch(`{% url "get_summary_statistics" 0 %}`.replace('0', currentDataset.id))
@@ -1704,6 +1917,19 @@
         }
         
         function updateChart(tabId) {
+            // Check if there's a current dataset
+            if (datasets.length === 0 || currentDatasetIndex === -1) {
+                // No dataset selected, show blank state
+                showBlankState();
+                return;
+            }
+            
+            // Remove blank state message if it exists
+            const blankStateMessage = document.querySelector('.blank-state-message');
+            if (blankStateMessage) {
+                blankStateMessage.remove();
+            }
+            
             // Simulate chart updates based on tab selection
             const chartContainer = document.getElementById('main-chart');
             
@@ -1715,9 +1941,9 @@
                 
                 // Update chart title based on tab
                 const titles = {
-                    'tab-regression': 'Revenue vs Marketing Spend',
+                    'tab-distributions': 'Variable Distributions',
                     'tab-correlation': 'Variable Correlation Matrix',
-                    'tab-residuals': 'Residual Analysis',
+                    'tab-outliers': 'Outlier Analysis',
                     'tab-summary': 'Summary Statistics Overview'
                 };
                 
