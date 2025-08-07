@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Analytics Dashboard - DataFlow Analytics</title>
+    <link rel="stylesheet" href="../css/main.css" />
+    <meta name="description" content="Advanced analytics dashboard with AI-powered insights, real-time collaboration, and interactive data visualization." />
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+<script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fdataflowa6394back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.6"></script>
+</head>
+<body class="bg-background">
+    <!-- Top Navigation -->
+    <nav class="bg-white shadow-subtle border-b border-border-light sticky top-0 z-50">
+        <div class="max-w-full mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-primary mr-3" viewBox="0 0 32 32" fill="currentColor">
+                        <path d="M4 8h6v16H4V8zm8-4h6v20h-6V4zm8 8h6v12h-6V12z"/>
+                        <circle cx="26" cy="6" r="2" fill="currentColor"/>
+                        <path d="M24 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    <span class="text-xl font-bold text-primary">DataFlow Analytics</span>
+                </div>
+                
+                <!-- Dashboard Navigation -->
+                <div class="hidden md:flex items-center space-x-6">
+                    <button class="flex items-center text-primary font-medium">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2-2z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5a2 2 0 012-2h4a2 2 0 012 2v6H8V5z"/>
+                        </svg>
+                        Datasets
+                    </button>
+                    <button class="flex items-center text-text-secondary hover:text-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"/>
+                        </svg>
+                        Saved Analyses
+                    </button>
+                    <button class="flex items-center text-text-secondary hover:text-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        Collaborate
+                    </button>
+                    <button class="flex items-center text-text-secondary hover:text-primary transition-colors">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Export
+                    </button>
+                </div>
+                
+                <!-- User Menu -->
+                <div class="flex items-center space-x-4">
+                    <!-- Collaboration Indicators -->
+                    <div class="hidden md:flex items-center space-x-2">
+                        <div class="flex -space-x-2">
+                            <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=32&h=32&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Sarah Chen" class="w-8 h-8 rounded-full border-2 border-white object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                            <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=32&h=32&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Marcus Rodriguez" class="w-8 h-8 rounded-full border-2 border-white object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                        </div>
+                        <div class="w-2 h-2 bg-success rounded-full animate-pulse"></div>
+                    </div>
+                    
+                    <!-- Main Navigation -->
+                    <div class="hidden md:flex items-center space-x-4">
+                        <a href="homepage.html" class="text-text-secondary hover:text-primary transition-colors">Home</a>
+                        <a href="pricing_plans.html" class="text-text-secondary hover:text-primary transition-colors">Pricing</a>
+                        <a href="getting_started.html" class="text-text-secondary hover:text-primary transition-colors">Get Started</a>
+                        <a href="account_management.html" class="text-text-secondary hover:text-primary transition-colors">Account</a>
+                    </div>
+                    
+                    <!-- User Avatar -->
+                    <div class="relative">
+                        <button class="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center font-semibold">
+                            JD
+                        </button>
+                    </div>
+                    
+                    <!-- Mobile Menu Button -->
+                    <button class="md:hidden p-2 rounded-lg hover:bg-surface" id="mobile-menu-btn">
+                        <svg class="h-6 w-6 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Dashboard Container -->
+    <div class="flex h-screen bg-background pt-16">
+<!-- Left Panel - Statistical Parameters -->
+        <div class="w-80 bg-white border-r border-border-light overflow-y-auto" id="left-panel">
+            <div class="p-6">
+                <!-- Dataset Selection -->
+                <div class="mb-6">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-lg font-semibold text-primary">Current Dataset</h3>
+                        <button class="text-secondary hover:text-secondary-600 transition-colors">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                            </svg>
+                        </button>
+                    </div>
+                    <div class="card p-4">
+                        <div class="flex items-center mb-2">
+                            <svg class="w-5 h-5 text-secondary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                            <span class="font-medium text-primary">Sales Performance Q4 2024</span>
+                        </div>
+                        <div class="text-sm text-text-secondary">
+                            <p>1,247 rows × 8 columns</p>
+                            <p>Last updated: Jan 3, 2025</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistical Tests Menu -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3">Statistical Tests</h3>
+                    <div class="space-y-2 max-h-96 overflow-y-auto">
+                        <!-- Descriptive Statistics -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Descriptive Statistics</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="summary-stats">
+                                    <div class="flex items-center justify-between">
+                                        <span>Summary Statistics</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="frequency-tables">
+                                    <div class="flex items-center justify-between">
+                                        <span>Frequency Tables</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="percentiles">
+                                    <div class="flex items-center justify-between">
+                                        <span>Percentiles & Quartiles</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Parametric Tests -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Parametric Tests</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="t-test-one">
+                                    <div class="flex items-center justify-between">
+                                        <span>One-Sample T-Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="t-test-two">
+                                    <div class="flex items-center justify-between">
+                                        <span>Two-Sample T-Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="paired-t-test">
+                                    <div class="flex items-center justify-between">
+                                        <span>Paired T-Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="anova-one-way">
+                                    <div class="flex items-center justify-between">
+                                        <span>One-Way ANOVA</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="anova-two-way">
+                                    <div class="flex items-center justify-between">
+                                        <span>Two-Way ANOVA</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="repeated-measures">
+                                    <div class="flex items-center justify-between">
+                                        <span>Repeated Measures ANOVA</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Non-Parametric Tests -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Non-Parametric Tests</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="mann-whitney">
+                                    <div class="flex items-center justify-between">
+                                        <span>Mann-Whitney U Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="wilcoxon-signed">
+                                    <div class="flex items-center justify-between">
+                                        <span>Wilcoxon Signed-Rank</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="kruskal-wallis">
+                                    <div class="flex items-center justify-between">
+                                        <span>Kruskal-Wallis Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="friedman">
+                                    <div class="flex items-center justify-between">
+                                        <span>Friedman Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="kolmogorov-smirnov">
+                                    <div class="flex items-center justify-between">
+                                        <span>Kolmogorov-Smirnov</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Regression Analysis -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Regression Analysis</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors bg-primary-50" data-test="linear-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Linear Regression</span>
+                                        <svg class="w-3 h-3 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="multiple-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Multiple Regression</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="logistic-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Logistic Regression</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="polynomial-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Polynomial Regression</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="ridge-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Ridge Regression</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Correlation & Association -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Correlation & Association</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="pearson-correlation">
+                                    <div class="flex items-center justify-between">
+                                        <span>Pearson Correlation</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="spearman-correlation">
+                                    <div class="flex items-center justify-between">
+                                        <span>Spearman Correlation</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="chi-square">
+                                    <div class="flex items-center justify-between">
+                                        <span>Chi-Square Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="fishers-exact">
+                                    <div class="flex items-center justify-between">
+                                        <span>Fisher's Exact Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Time Series -->
+                        <div class="border-b border-border-light pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Time Series Analysis</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="time-series">
+                                    <div class="flex items-center justify-between">
+                                        <span>Time Series Decomposition</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="arima">
+                                    <div class="flex items-center justify-between">
+                                        <span>ARIMA Models</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="seasonal-decomposition">
+                                    <div class="flex items-center justify-between">
+                                        <span>Seasonal Decomposition</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="autocorrelation">
+                                    <div class="flex items-center justify-between">
+                                        <span>Autocorrelation Analysis</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Survival Analysis -->
+                        <div class="pb-2 mb-3">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Survival Analysis</h4>
+                            <div class="space-y-1">
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="kaplan-meier">
+                                    <div class="flex items-center justify-between">
+                                        <span>Kaplan-Meier</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="cox-regression">
+                                    <div class="flex items-center justify-between">
+                                        <span>Cox Regression</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                                <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="log-rank">
+                                    <div class="flex items-center justify-between">
+                                        <span>Log-Rank Test</span>
+                                        <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                                        </svg>
+                                    </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variable Selection -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3">Variables</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Dependent Variable</label>
+                            <select class="input-field">
+                                <option>Revenue</option>
+                                <option>Conversion Rate</option>
+                                <option>Customer Satisfaction</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Independent Variables</label>
+                            <div class="space-y-2">
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                    <span class="text-sm">Marketing Spend</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" checked class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                    <span class="text-sm">Seasonality</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                    <span class="text-sm">Product Category</span>
+                                </label>
+                                <label class="flex items-center">
+                                    <input type="checkbox" class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                    <span class="text-sm">Geographic Region</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Statistical Parameters -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3">Analysis Parameters</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Selected Test</label>
+                            <div class="p-3 bg-primary-50 rounded-lg border border-primary-200">
+                                <div class="flex items-center">
+                                    <svg class="w-4 h-4 text-primary mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                                    </svg>
+                                    <span class="text-sm font-medium text-primary" id="selected-test-name">Linear Regression</span>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">
+                                Confidence Level: <span class="text-secondary font-semibold" id="confidence-value">95%</span>
+                            </label>
+                            <input type="range" min="90" max="99" value="95" class="w-full h-2 bg-border rounded-lg appearance-none cursor-pointer" id="confidence-slider" />
+                            <div class="flex justify-between text-xs text-text-secondary mt-1">
+                                <span>90%</span>
+                                <span>99%</span>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Sample Size</label>
+                            <div class="flex items-center space-x-2">
+                                <input type="number" value="1247" class="input-field flex-1" readonly />
+                                <button class="text-secondary hover:text-secondary-600 transition-colors">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" checked class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                <span class="text-sm">Include outlier detection</span>
+                            </label>
+                        </div>
+                        
+                        <div>
+                            <label class="flex items-center">
+                                <input type="checkbox" class="rounded border-border text-primary focus:ring-primary-300 mr-2" />
+                                <span class="text-sm">Apply data transformation</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Data Filters -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3">Data Filters</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Date Range</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <input type="date" value="2024-10-01" class="input-field text-sm" />
+                                <input type="date" value="2024-12-31" class="input-field text-sm" />
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-text-primary mb-2">Region</label>
+                            <select class="input-field">
+                                <option>All Regions</option>
+                                <option>North America</option>
+                                <option>Europe</option>
+                                <option>Asia Pacific</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Action Buttons -->
+                <div class="space-y-3">
+                    <button class="btn-secondary w-full" id="run-analysis">
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                        Run Analysis
+                    </button>
+                    <button class="border-2 border-border text-text-primary px-6 py-3 rounded-lg font-semibold w-full hover:bg-surface transition-all duration-250">
+                        <svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reset Parameters
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Center Panel - Analysis Workspace -->
+        <div class="flex-1 overflow-hidden">
+            <div class="h-full flex flex-col">
+                <!-- Workspace Header -->
+                <div class="bg-white border-b border-border-light p-4">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-4">
+                            <h2 class="text-xl font-semibold text-primary">Analysis Workspace</h2>
+                            <div class="flex items-center text-sm text-success">
+                                <div class="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
+                                Processing Complete
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-2">
+                            <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Fullscreen">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
+                                </svg>
+                            </button>
+                            <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Download Chart">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Visualization Area -->
+                <div class="flex-1 p-6 overflow-auto">
+                    <!-- Chart Tabs -->
+                    <div class="flex space-x-1 mb-6 border-b border-border-light">
+                        <button class="px-4 py-2 text-sm font-medium text-primary border-b-2 border-primary" id="tab-regression">
+                            Regression Analysis
+                        </button>
+                        <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-correlation">
+                            Correlation Matrix
+                        </button>
+                        <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-residuals">
+                            Residual Plots
+                        </button>
+                        <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-summary">
+                            Summary Statistics
+                        </button>
+                    </div>
+
+                    <!-- Main Chart Container -->
+                    <div class="card mb-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-primary">Revenue vs Marketing Spend</h3>
+                            <div class="flex items-center space-x-2 text-sm text-text-secondary">
+                                <span>R² = 0.847</span>
+                                <span>•</span>
+                                <span>p < 0.001</span>
+                            </div>
+                        </div>
+                        <div id="main-chart" class="h-96 w-full"></div>
+                    </div>
+
+                    <!-- Statistical Results -->
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <!-- Model Summary -->
+                        <div class="card">
+                            <h4 class="text-lg font-semibold text-primary mb-4">Model Summary</h4>
+                            <div class="space-y-3">
+                                <div class="flex justify-between">
+                                    <span class="text-text-secondary">R-squared:</span>
+                                    <span class="font-medium text-primary">0.847</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-text-secondary">Adjusted R-squared:</span>
+                                    <span class="font-medium text-primary">0.843</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-text-secondary">F-statistic:</span>
+                                    <span class="font-medium text-primary">2,847.3</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-text-secondary">p-value:</span>
+                                    <span class="font-medium text-success">< 0.001</span>
+                                </div>
+                                <div class="flex justify-between">
+                                    <span class="text-text-secondary">Standard Error:</span>
+                                    <span class="font-medium text-primary">12,847</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Coefficients -->
+                        <div class="card">
+                            <h4 class="text-lg font-semibold text-primary mb-4">Coefficients</h4>
+                            <div class="overflow-x-auto">
+                                <table class="w-full text-sm">
+                                    <thead>
+                                        <tr class="border-b border-border-light">
+                                            <th class="text-left py-2 text-text-secondary">Variable</th>
+                                            <th class="text-right py-2 text-text-secondary">Coefficient</th>
+                                            <th class="text-right py-2 text-text-secondary">p-value</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="space-y-2">
+                                        <tr>
+                                            <td class="py-2 font-medium">Intercept</td>
+                                            <td class="text-right py-2">23,847</td>
+                                            <td class="text-right py-2 text-success">< 0.001</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 font-medium">Marketing Spend</td>
+                                            <td class="text-right py-2">4.23</td>
+                                            <td class="text-right py-2 text-success">< 0.001</td>
+                                        </tr>
+                                        <tr>
+                                            <td class="py-2 font-medium">Seasonality</td>
+                                            <td class="text-right py-2">1.87</td>
+                                            <td class="text-right py-2 text-success">0.003</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel - AI Chat Interface -->
+        <div class="w-96 bg-white border-l border-border-light flex flex-col" id="right-panel">
+            <!-- Chat Header -->
+            <div class="p-4 border-b border-border-light">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-lg font-semibold text-primary">AI Assistant</h3>
+                            <p class="text-sm text-text-secondary">Statistical insights & guidance</p>
+                        </div>
+                    </div>
+                    <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Minimize Panel">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Chat Messages -->
+            <div class="flex-1 overflow-y-auto p-4 space-y-4" id="chat-messages">
+                <!-- AI Welcome Message -->
+                <div class="flex items-start">
+                    <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-text-primary">Hi! I'm here to help you interpret your analysis results. Your regression model shows strong predictive power with an R² of 0.847. What would you like to explore?</p>
+                    </div>
+                </div>
+
+                <!-- User Message -->
+                <div class="flex items-start justify-end">
+                    <div class="bg-primary rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-white">What does the R-squared value tell me about my model?</p>
+                    </div>
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
+                        JD
+                    </div>
+                </div>
+
+                <!-- AI Response -->
+                <div class="flex items-start">
+                    <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-text-primary mb-2">Great question! Your R² of 0.847 means that 84.7% of the variation in revenue can be explained by your model variables (marketing spend and seasonality).</p>
+                        <p class="text-sm text-text-primary mb-2">This is considered a <strong>strong relationship</strong> in business analytics. It suggests your model is quite reliable for predictions.</p>
+                        <div class="bg-white rounded p-2 mt-2 border border-accent-200">
+                            <p class="text-xs text-text-secondary">💡 <strong>Insight:</strong> The remaining 15.3% of variation might be explained by factors not in your model, like competitor actions or economic conditions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- User Message -->
+                <div class="flex items-start justify-end">
+                    <div class="bg-primary rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-white">Should I be concerned about any assumptions in my regression model?</p>
+                    </div>
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
+                        JD
+                    </div>
+                </div>
+
+                <!-- AI Response -->
+                <div class="flex items-start">
+                    <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-text-primary mb-2">Excellent thinking! Let me check the key assumptions:</p>
+                        <div class="space-y-2">
+                            <div class="flex items-center text-xs">
+                                <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                                <span>Linearity: ✓ Good</span>
+                            </div>
+                            <div class="flex items-center text-xs">
+                                <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                                <span>Independence: ✓ Good</span>
+                            </div>
+                            <div class="flex items-center text-xs">
+                                <div class="w-2 h-2 bg-warning rounded-full mr-2"></div>
+                                <span>Homoscedasticity: ⚠️ Check residuals</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-text-primary mt-2">I recommend reviewing the residual plots tab to verify the homoscedasticity assumption.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chat Input -->
+            <div class="p-4 border-t border-border-light">
+                <div class="flex space-x-2">
+                    <input type="text" placeholder="Ask about your analysis..." class="input-field flex-1 text-sm" id="chat-input" />
+                    <button class="btn-accent px-4 py-2" id="send-message">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Quick Questions -->
+                <div class="mt-3">
+                    <p class="text-xs text-text-secondary mb-2">Quick questions:</p>
+                    <div class="flex flex-wrap gap-1">
+                        <button class="text-xs bg-surface text-text-secondary px-2 py-1 rounded hover:bg-primary hover:text-white transition-colors">
+                            Interpret coefficients
+                        </button>
+                        <button class="text-xs bg-surface text-text-secondary px-2 py-1 rounded hover:bg-primary hover:text-white transition-colors">
+                            Check assumptions
+                        </button>
+                        <button class="text-xs bg-surface text-text-secondary px-2 py-1 rounded hover:bg-primary hover:text-white transition-colors">
+                            Improve model
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mobile Responsive Overlay -->
+    <div class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden" id="mobile-overlay"></div>
+
+    <!-- Contextual Help Tooltip -->
+    <div class="fixed bg-primary text-white p-3 rounded-lg shadow-lg text-sm max-w-xs hidden z-50" id="help-tooltip">
+        <div class="flex items-start">
+            <svg class="w-4 h-4 mr-2 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"/>
+            </svg>
+            <div>
+                <p class="font-medium mb-1">Statistical Tip</p>
+                <p id="tooltip-content">Hover over elements to get contextual help and explanations.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Dashboard Functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize D3 Chart
+            initializeChart();
+            
+            // Statistical test selection functionality
+            const statisticalTestBtns = document.querySelectorAll('.statistical-test-btn');
+            const selectedTestName = document.getElementById('selected-test-name');
+            
+            statisticalTestBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    // Remove active state from all buttons
+                    statisticalTestBtns.forEach(b => {
+                        b.classList.remove('bg-primary-50');
+                        const arrow = b.querySelector('svg');
+                        arrow.classList.remove('text-primary');
+                        arrow.classList.add('text-text-secondary');
+                        // Change check icon back to arrow
+                        arrow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>';
+                    });
+                    
+                    // Add active state to clicked button
+                    this.classList.add('bg-primary-50');
+                    const arrow = this.querySelector('svg');
+                    arrow.classList.remove('text-text-secondary');
+                    arrow.classList.add('text-primary');
+                    // Change arrow to check icon
+                    arrow.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>';
+                    
+                    // Update selected test name
+                    const testName = this.querySelector('span').textContent;
+                    selectedTestName.textContent = testName;
+                    
+                    // Update analysis type dropdown if it exists
+                    const analysisTypeDropdown = document.getElementById('analysis-type');
+                    if (analysisTypeDropdown) {
+                        // Create option if it doesn't exist
+                        let optionExists = false;
+                        for (let i = 0; i < analysisTypeDropdown.options.length; i++) {
+                            if (analysisTypeDropdown.options[i].text === testName) {
+                                analysisTypeDropdown.selectedIndex = i;
+                                optionExists = true;
+                                break;
+                            }
+                        }
+                        
+                        if (!optionExists) {
+                            const newOption = document.createElement('option');
+                            newOption.text = testName;
+                            newOption.value = testName.toLowerCase().replace(/\s+/g, '-');
+                            analysisTypeDropdown.add(newOption);
+                            analysisTypeDropdown.value = newOption.value;
+                        }
+                    }
+                    
+                    // Simulate loading and update chart
+                    const mainChart = document.getElementById('main-chart');
+                    if (mainChart) {
+                        mainChart.style.opacity = '0.5';
+                        setTimeout(() => {
+                            mainChart.style.opacity = '1';
+                            updateChart('tab-regression');
+                        }, 800);
+                    }
+                });
+            });
+            
+            // Confidence slider interaction
+            const confidenceSlider = document.getElementById('confidence-slider');
+            const confidenceValue = document.getElementById('confidence-value');
+            
+            confidenceSlider.addEventListener('input', function() {
+                confidenceValue.textContent = this.value + '%';
+            });
+            
+            // Tab switching
+            const tabs = document.querySelectorAll('[id^="tab-"]');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('text-primary', 'border-b-2', 'border-primary');
+                        t.classList.add('text-text-secondary');
+                    });
+                    
+                    // Add active class to clicked tab
+                    this.classList.remove('text-text-secondary');
+                    this.classList.add('text-primary', 'border-b-2', 'border-primary');
+                    
+                    // Update chart based on tab
+                    updateChart(this.id);
+                });
+            });
+            
+            // Run Analysis button
+            document.getElementById('run-analysis').addEventListener('click', function() {
+                this.innerHTML = '<svg class="w-4 h-4 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Running...';
+                
+                setTimeout(() => {
+                    this.innerHTML = '<svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>Run Analysis';
+                    updateChart('tab-regression');
+                }, 2000);
+            });
+            
+            // Chat functionality
+            const chatInput = document.getElementById('chat-input');
+            const sendButton = document.getElementById('send-message');
+            const chatMessages = document.getElementById('chat-messages');
+            
+            function sendMessage() {
+                const message = chatInput.value.trim();
+                if (!message) return;
+                
+                // Add user message
+                const userMessage = document.createElement('div');
+                userMessage.className = 'flex items-start justify-end';
+                userMessage.innerHTML = `
+                    <div class="bg-primary rounded-lg p-3 max-w-xs">
+                        <p class="text-sm text-white">${message}</p>
+                    </div>
+                    <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
+                        JD
+                    </div>
+                `;
+                chatMessages.appendChild(userMessage);
+                
+                // Clear input
+                chatInput.value = '';
+                
+                // Simulate AI response
+                setTimeout(() => {
+                    const aiResponse = document.createElement('div');
+                    aiResponse.className = 'flex items-start';
+                    aiResponse.innerHTML = `
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                            <p class="text-sm text-text-primary">I understand your question about "${message}". Based on your current analysis, I can provide specific insights. Would you like me to explain the statistical significance or suggest next steps?</p>
+                        </div>
+                    `;
+                    chatMessages.appendChild(aiResponse);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }, 1000);
+                
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+            }
+            
+            sendButton.addEventListener('click', sendMessage);
+            chatInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+            
+            // Mobile responsiveness
+            const mobileMenuBtn = document.getElementById('mobile-menu-btn');
+            const mobileOverlay = document.getElementById('mobile-overlay');
+            const leftPanel = document.getElementById('left-panel');
+            const rightPanel = document.getElementById('right-panel');
+            
+            mobileMenuBtn.addEventListener('click', function() {
+                leftPanel.classList.toggle('hidden');
+                rightPanel.classList.toggle('hidden');
+                mobileOverlay.classList.toggle('hidden');
+            });
+            
+            mobileOverlay.addEventListener('click', function() {
+                leftPanel.classList.add('hidden');
+                rightPanel.classList.add('hidden');
+                mobileOverlay.classList.add('hidden');
+            });
+            
+            // Contextual help
+            const helpElements = document.querySelectorAll('[title]');
+            const helpTooltip = document.getElementById('help-tooltip');
+            const tooltipContent = document.getElementById('tooltip-content');
+            
+            helpElements.forEach(element => {
+                element.addEventListener('mouseenter', function(e) {
+                    tooltipContent.textContent = this.getAttribute('title');
+                    helpTooltip.classList.remove('hidden');
+                    
+                    const rect = this.getBoundingClientRect();
+                    helpTooltip.style.left = rect.left + 'px';
+                    helpTooltip.style.top = (rect.bottom + 10) + 'px';
+                });
+                
+                element.addEventListener('mouseleave', function() {
+                    helpTooltip.classList.add('hidden');
+                });
+            });
+        });
+        
+        // D3.js Chart Implementation
+        function initializeChart() {
+            const margin = {top: 20, right: 30, bottom: 40, left: 50};
+            const width = 800 - margin.left - margin.right;
+            const height = 350 - margin.bottom - margin.top;
+            
+            // Sample data
+            const data = [
+                {x: 10000, y: 65000}, {x: 15000, y: 89000}, {x: 20000, y: 112000},
+                {x: 25000, y: 135000}, {x: 30000, y: 158000}, {x: 35000, y: 181000},
+                {x: 40000, y: 204000}, {x: 45000, y: 227000}, {x: 50000, y: 250000},
+                {x: 55000, y: 273000}, {x: 60000, y: 296000}, {x: 65000, y: 319000}
+            ];
+            
+            const svg = d3.select('#main-chart')
+                .append('svg')
+                .attr('width', width + margin.left + margin.right)
+                .attr('height', height + margin.top + margin.bottom)
+                .append('g')
+                .attr('transform', `translate(${margin.left},${margin.top})`);
+            
+            // Scales
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.x))
+                .range([0, width]);
+            
+            const yScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.y))
+                .range([height, 0]);
+            
+            // Line generator
+            const line = d3.line()
+                .x(d => xScale(d.x))
+                .y(d => yScale(d.y))
+                .curve(d3.curveMonotoneX);
+            
+            // Add axes
+            svg.append('g')
+                .attr('transform', `translate(0,${height})`)
+                .call(d3.axisBottom(xScale).tickFormat(d => '$' + d3.format('.0s')(d)));
+            
+            svg.append('g')
+                .call(d3.axisLeft(yScale).tickFormat(d => '$' + d3.format('.0s')(d)));
+            
+            // Add axis labels
+            svg.append('text')
+                .attr('transform', 'rotate(-90)')
+                .attr('y', 0 - margin.left)
+                .attr('x', 0 - (height / 2))
+                .attr('dy', '1em')
+                .style('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .style('fill', '#718096')
+                .text('Revenue ($)');
+            
+            svg.append('text')
+                .attr('transform', `translate(${width / 2}, ${height + margin.bottom})`)
+                .style('text-anchor', 'middle')
+                .style('font-size', '12px')
+                .style('fill', '#718096')
+                .text('Marketing Spend ($)');
+            
+            // Add regression line
+            svg.append('path')
+                .datum(data)
+                .attr('fill', 'none')
+                .attr('stroke', '#38b2ac')
+                .attr('stroke-width', 3)
+                .attr('d', line);
+            
+            // Add data points
+            svg.selectAll('.dot')
+                .data(data)
+                .enter().append('circle')
+                .attr('class', 'dot')
+                .attr('cx', d => xScale(d.x))
+                .attr('cy', d => yScale(d.y))
+                .attr('r', 5)
+                .attr('fill', '#1a365d')
+                .attr('opacity', 0.7)
+                .on('mouseover', function(event, d) {
+                    d3.select(this).attr('r', 7).attr('opacity', 1);
+                    
+                    // Add tooltip
+                    const tooltip = svg.append('g')
+                        .attr('id', 'tooltip');
+                    
+                    const rect = tooltip.append('rect')
+                        .attr('x', xScale(d.x) + 10)
+                        .attr('y', yScale(d.y) - 30)
+                        .attr('width', 120)
+                        .attr('height', 25)
+                        .attr('fill', '#1a365d')
+                        .attr('rx', 4);
+                    
+                    tooltip.append('text')
+                        .attr('x', xScale(d.x) + 15)
+                        .attr('y', yScale(d.y) - 12)
+                        .attr('fill', 'white')
+                        .style('font-size', '12px')
+                        .text(`$${d3.format(',')(d.x)} → $${d3.format(',')(d.y)}`);
+                })
+                .on('mouseout', function() {
+                    d3.select(this).attr('r', 5).attr('opacity', 0.7);
+                    svg.select('#tooltip').remove();
+                });
+        }
+        
+        function updateChart(tabId) {
+            // Simulate chart updates based on tab selection
+            const chartContainer = document.getElementById('main-chart');
+            
+            // Add loading state
+            chartContainer.style.opacity = '0.5';
+            
+            setTimeout(() => {
+                chartContainer.style.opacity = '1';
+                
+                // Update chart title based on tab
+                const titles = {
+                    'tab-regression': 'Revenue vs Marketing Spend',
+                    'tab-correlation': 'Variable Correlation Matrix',
+                    'tab-residuals': 'Residual Analysis',
+                    'tab-summary': 'Summary Statistics Overview'
+                };
+                
+                const titleElement = chartContainer.parentElement.querySelector('h3');
+                if (titleElement && titles[tabId]) {
+                    titleElement.textContent = titles[tabId];
+                }
+            }, 500);
+        }
+    </script>
+<script id="dhws-dataInjector" src="../public/dhws-data-injector.js"></script>
+</body>
+</html>

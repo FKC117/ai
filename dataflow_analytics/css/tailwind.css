@@ -1,0 +1,133 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Primary Colors */
+  --color-primary: #1a365d; /* blue-900 - Analytical depth, trustworthy foundation */
+  --color-primary-50: #e6f3ff;
+  --color-primary-100: #b3d9ff;
+  --color-primary-200: #80bfff;
+  --color-primary-300: #4da6ff;
+  --color-primary-400: #1a8cff;
+  --color-primary-500: #0066cc;
+  --color-primary-600: #004d99;
+  --color-primary-700: #003366;
+  --color-primary-800: #001a33;
+  --color-primary-900: #1a365d;
+
+  /* Secondary Colors */
+  --color-secondary: #38b2ac; /* teal-500 - Intelligent clarity, breakthrough moments */
+  --color-secondary-50: #e6fffa;
+  --color-secondary-100: #b2f5ea;
+  --color-secondary-200: #81e6d9;
+  --color-secondary-300: #4fd1c7;
+  --color-secondary-400: #38b2ac;
+  --color-secondary-500: #319795;
+  --color-secondary-600: #2c7a7b;
+  --color-secondary-700: #285e61;
+  --color-secondary-800: #234e52;
+  --color-secondary-900: #1d4044;
+
+  /* Accent Colors */
+  --color-accent: #ed8936; /* orange-400 - Insight highlighting, warm confidence */
+  --color-accent-50: #fffaf0;
+  --color-accent-100: #feebc8;
+  --color-accent-200: #fbd38d;
+  --color-accent-300: #f6ad55;
+  --color-accent-400: #ed8936;
+  --color-accent-500: #dd6b20;
+  --color-accent-600: #c05621;
+  --color-accent-700: #9c4221;
+  --color-accent-800: #7b341e;
+  --color-accent-900: #652b19;
+
+  /* Background Colors */
+  --color-background: #f7fafc; /* gray-50 - Clean mental space */
+  --color-surface: #edf2f7; /* gray-100 - Subtle organization */
+
+  /* Text Colors */
+  --color-text-primary: #2d3748; /* gray-700 - Extended readability */
+  --color-text-secondary: #718096; /* gray-500 - Clear hierarchy */
+
+  /* Status Colors */
+  --color-success: #38a169; /* green-500 - Positive confirmation */
+  --color-warning: #d69e2e; /* yellow-500 - Thoughtful caution */
+  --color-error: #e53e3e; /* red-500 - Helpful correction */
+
+  /* Border Colors */
+  --color-border: #e2e8f0; /* gray-200 - Minimal borders */
+  --color-border-light: #f1f5f9; /* gray-100 - Subtle separation */
+
+  /* Shadow Colors */
+  --shadow-primary: rgba(26, 54, 93, 0.1); /* Primary shadow for floating elements */
+  --shadow-subtle: rgba(0, 0, 0, 0.1); /* Gentle elevation for cards */
+}
+
+@layer base {
+  body {
+    font-family: 'Inter', sans-serif;
+    color: var(--color-text-primary);
+    background-color: var(--color-background);
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Inter', sans-serif;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  code, pre {
+    font-family: 'JetBrains Mono', monospace;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-6 py-3 rounded-lg font-semibold transition-all duration-250 ease-out hover:bg-primary-700 focus:ring-2 focus:ring-primary-300;
+  }
+
+  .btn-secondary {
+    @apply bg-secondary text-white px-6 py-3 rounded-lg font-semibold transition-all duration-250 ease-out hover:bg-secondary-600 focus:ring-2 focus:ring-secondary-300;
+  }
+
+  .btn-accent {
+    @apply bg-accent text-white px-6 py-3 rounded-lg font-semibold transition-all duration-250 ease-out hover:bg-accent-600 focus:ring-2 focus:ring-accent-300;
+  }
+
+  .card {
+    @apply bg-white rounded-lg shadow-subtle border border-border-light p-6;
+  }
+
+  .card-elevated {
+    @apply bg-white rounded-lg shadow-primary border border-border-light p-6;
+  }
+
+  .input-field {
+    @apply w-full px-4 py-3 border border-border rounded-lg focus:ring-2 focus:ring-primary-300 focus:border-primary transition-all duration-250 ease-out;
+  }
+
+  .text-code {
+    @apply font-mono text-sm;
+  }
+
+  .animate-data-update {
+    animation: dataUpdate 400ms ease-in-out;
+  }
+
+  .animate-state-change {
+    animation: stateChange 250ms ease-out;
+  }
+}
+
+@keyframes dataUpdate {
+  0% { opacity: 0.7; transform: translateY(2px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes stateChange {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; }
+}

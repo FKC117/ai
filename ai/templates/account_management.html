@@ -1,0 +1,576 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Account Management - DataFlow Analytics</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <meta name="description" content="Manage your DataFlow Analytics account, subscription, team members, and usage analytics." />
+<script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fdataflowa6394back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.6"></script>
+</head>
+<body class="bg-background">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-subtle border-b border-border-light sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-primary mr-3" viewBox="0 0 32 32" fill="currentColor">
+                        <path d="M4 8h6v16H4V8zm8-4h6v20h-6V4zm8 8h6v12h-6V12z"/>
+                        <circle cx="26" cy="6" r="2" fill="currentColor"/>
+                        <path d="M24 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    <span class="text-xl font-bold text-primary">DataFlow Analytics</span>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="{% url 'homepage' %}" class="text-text-secondary hover:text-primary transition-colors">Home</a>
+                    <a href="{% url 'pricing' %}" class="text-text-secondary hover:text-primary transition-colors">Pricing</a>
+                    <a href="{% url 'getting_started' %}" class="text-text-secondary hover:text-primary transition-colors">Get Started</a>
+                    <a href="{% url 'analytics_dashboard' %}" class="text-text-secondary hover:text-primary transition-colors">Dashboard</a>
+                    <a href="{% url 'account_management' %}" class="text-primary font-medium">Account</a>
+                </div>
+                
+                <!-- User Profile -->
+                <div class="hidden md:flex items-center space-x-4">
+                    <div class="flex items-center space-x-3">
+                        <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Sarah Chen" class="w-8 h-8 rounded-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                        <span class="text-sm font-medium text-primary">Sarah Chen</span>
+                    </div>
+                    <button class="text-text-secondary hover:text-primary">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button class="md:hidden p-2 rounded-lg hover:bg-surface">
+                    <svg class="h-6 w-6 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Account Management Header -->
+    <section class="bg-white border-b border-border-light">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <div class="flex flex-col md:flex-row md:items-center md:justify-between">
+                <div>
+                    <h1 class="text-3xl font-bold text-primary mb-2">Account Management</h1>
+                    <p class="text-text-secondary">Manage your subscription, team, and account settings</p>
+                </div>
+                <div class="mt-4 md:mt-0 flex items-center space-x-4">
+                    <div class="flex items-center text-sm text-success">
+                        <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                        Professional Plan Active
+                    </div>
+                    <button class="btn-secondary">
+                        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+                        </svg>
+                        Export Data
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Account Overview Dashboard -->
+    <section class="py-8">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid lg:grid-cols-4 gap-6 mb-8">
+                <!-- Current Plan Card -->
+                <div class="card-elevated">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-primary">Current Plan</h3>
+                        <div class="w-10 h-10 bg-secondary-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-primary mb-1">Professional</div>
+                    <p class="text-text-secondary text-sm mb-3">$89/month</p>
+                    <div class="text-xs text-text-secondary">
+                        Next billing: January 4, 2025
+                    </div>
+                </div>
+
+                <!-- Usage Summary -->
+                <div class="card-elevated">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-primary">Usage This Month</h3>
+                        <div class="w-10 h-10 bg-accent-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-primary mb-1">847</div>
+                    <p class="text-text-secondary text-sm mb-3">Analyses completed</p>
+                    <div class="text-xs text-success">
+                        +23% from last month
+                    </div>
+                </div>
+
+                <!-- Team Members -->
+                <div class="card-elevated">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-primary">Team Members</h3>
+                        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-primary mb-1">8</div>
+                    <p class="text-text-secondary text-sm mb-3">Active members</p>
+                    <div class="text-xs text-text-secondary">
+                        2 of 10 seats available
+                    </div>
+                </div>
+
+                <!-- Storage Used -->
+                <div class="card-elevated">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="text-lg font-semibold text-primary">Storage Used</h3>
+                        <div class="w-10 h-10 bg-warning/10 rounded-lg flex items-center justify-center">
+                            <svg class="w-5 h-5 text-warning" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4"/>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="text-2xl font-bold text-primary mb-1">47.3 GB</div>
+                    <p class="text-text-secondary text-sm mb-3">of 100 GB</p>
+                    <div class="w-full bg-border rounded-full h-2">
+                        <div class="bg-warning h-2 rounded-full" style="width: 47%"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content Grid -->
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Left Column - Usage Analytics -->
+                <div class="lg:col-span-2 space-y-6">
+                    <!-- Usage Trends Chart -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-primary">Usage Trends</h3>
+                            <div class="flex items-center space-x-2">
+                                <button class="text-sm text-text-secondary hover:text-primary px-3 py-1 rounded-lg hover:bg-surface">30 Days</button>
+                                <button class="text-sm bg-primary text-white px-3 py-1 rounded-lg">90 Days</button>
+                                <button class="text-sm text-text-secondary hover:text-primary px-3 py-1 rounded-lg hover:bg-surface">1 Year</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Chart Container -->
+                        <div class="h-64 bg-gradient-to-r from-primary-50 to-secondary-50 rounded-lg p-4 relative overflow-hidden">
+                            <svg class="w-full h-full" viewBox="0 0 400 200">
+                                <!-- Grid lines -->
+                                <defs>
+                                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e2e8f0" stroke-width="1"/>
+                                    </pattern>
+                                </defs>
+                                <rect width="100%" height="100%" fill="url(#grid)" opacity="0.3"/>
+                                
+                                <!-- Usage trend line -->
+                                <path d="M20,160 Q80,120 140,100 T260,80 T380,60" stroke="#38b2ac" stroke-width="3" fill="none"/>
+                                
+                                <!-- Data points -->
+                                <circle cx="80" cy="120" r="4" fill="#38b2ac" class="animate-pulse"/>
+                                <circle cx="140" cy="100" r="4" fill="#ed8936" class="animate-pulse"/>
+                                <circle cx="200" cy="90" r="4" fill="#38b2ac" class="animate-pulse"/>
+                                <circle cx="260" cy="80" r="4" fill="#ed8936" class="animate-pulse"/>
+                                <circle cx="320" cy="70" r="4" fill="#38b2ac" class="animate-pulse"/>
+                                
+                                <!-- Labels -->
+                                <text x="20" y="190" class="text-xs fill-current text-text-secondary">Nov</text>
+                                <text x="100" y="190" class="text-xs fill-current text-text-secondary">Dec</text>
+                                <text x="180" y="190" class="text-xs fill-current text-text-secondary">Jan</text>
+                                <text x="260" y="190" class="text-xs fill-current text-text-secondary">Feb</text>
+                                <text x="340" y="190" class="text-xs fill-current text-text-secondary">Mar</text>
+                            </svg>
+                        </div>
+                        
+                        <!-- Chart Legend -->
+                        <div class="flex items-center justify-center space-x-6 mt-4">
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-secondary rounded-full mr-2"></div>
+                                <span class="text-sm text-text-secondary">Analyses Completed</span>
+                            </div>
+                            <div class="flex items-center">
+                                <div class="w-3 h-3 bg-accent rounded-full mr-2"></div>
+                                <span class="text-sm text-text-secondary">AI Queries Used</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team Management -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-6">
+                            <h3 class="text-xl font-semibold text-primary">Team Management</h3>
+                            <button class="btn-secondary">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                                </svg>
+                                Invite Member
+                            </button>
+                        </div>
+                        
+                        <!-- Team Members List -->
+                        <div class="space-y-4">
+                            <!-- Team Member 1 -->
+                            <div class="flex items-center justify-between p-4 bg-surface rounded-lg">
+                                <div class="flex items-center space-x-4">
+                                    <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Sarah Chen" class="w-10 h-10 rounded-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                                    <div>
+                                        <h4 class="font-medium text-primary">Sarah Chen</h4>
+                                        <p class="text-sm text-text-secondary">sarah.chen@company.com</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <span class="px-3 py-1 bg-primary-100 text-primary text-sm rounded-full">Admin</span>
+                                    <div class="flex items-center text-sm text-text-secondary">
+                                        <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                                        Active
+                                    </div>
+                                    <button class="text-text-secondary hover:text-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Team Member 2 -->
+                            <div class="flex items-center justify-between p-4 bg-surface rounded-lg">
+                                <div class="flex items-center space-x-4">
+                                    <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Marcus Rodriguez" class="w-10 h-10 rounded-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                                    <div>
+                                        <h4 class="font-medium text-primary">Marcus Rodriguez</h4>
+                                        <p class="text-sm text-text-secondary">marcus.r@company.com</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <span class="px-3 py-1 bg-secondary-100 text-secondary text-sm rounded-full">Analyst</span>
+                                    <div class="flex items-center text-sm text-text-secondary">
+                                        <div class="w-2 h-2 bg-success rounded-full mr-2"></div>
+                                        Active
+                                    </div>
+                                    <button class="text-text-secondary hover:text-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- Team Member 3 -->
+                            <div class="flex items-center justify-between p-4 bg-surface rounded-lg">
+                                <div class="flex items-center space-x-4">
+                                    <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Dr. Emily Watson" class="w-10 h-10 rounded-full object-cover" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                                    <div>
+                                        <h4 class="font-medium text-primary">Dr. Emily Watson</h4>
+                                        <p class="text-sm text-text-secondary">emily.watson@company.com</p>
+                                    </div>
+                                </div>
+                                <div class="flex items-center space-x-4">
+                                    <span class="px-3 py-1 bg-accent-100 text-accent text-sm rounded-full">Viewer</span>
+                                    <div class="flex items-center text-sm text-text-secondary">
+                                        <div class="w-2 h-2 bg-warning rounded-full mr-2"></div>
+                                        Invited
+                                    </div>
+                                    <button class="text-text-secondary hover:text-primary">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column - Account Settings -->
+                <div class="space-y-6">
+                    <!-- Billing Information -->
+                    <div class="card">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-primary">Billing Information</h3>
+                            <button class="text-sm text-secondary hover:text-secondary-600">Edit</button>
+                        </div>
+                        
+                        <div class="space-y-4">
+                            <div>
+                                <p class="text-sm text-text-secondary mb-1">Payment Method</p>
+                                <div class="flex items-center">
+                                    <svg class="w-8 h-5 mr-3" viewBox="0 0 32 20" fill="none">
+                                        <rect width="32" height="20" rx="4" fill="#1a365d"/>
+                                        <rect x="2" y="2" width="28" height="16" rx="2" fill="#38b2ac"/>
+                                        <text x="16" y="12" text-anchor="middle" class="text-xs fill-white font-mono">•••• 4242</text>
+                                    </svg>
+                                    <span class="text-sm text-primary">Visa ending in 4242</span>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-text-secondary mb-1">Next Payment</p>
+                                <p class="text-sm font-medium text-primary">$89.00 on January 4, 2025</p>
+                            </div>
+                            
+                            <div>
+                                <p class="text-sm text-text-secondary mb-1">Billing Address</p>
+                                <p class="text-sm text-primary">123 Business Ave<br />San Francisco, CA 94105</p>
+                            </div>
+                        </div>
+                        
+                        <button class="w-full mt-4 border border-border text-primary py-2 rounded-lg hover:bg-surface transition-colors">
+                            View Billing History
+                        </button>
+                    </div>
+
+                    <!-- Security Settings -->
+                    <div class="card">
+                        <h3 class="text-lg font-semibold text-primary mb-4">Security Settings</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">Two-Factor Authentication</p>
+                                    <p class="text-xs text-text-secondary">Add an extra layer of security</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-10 h-6 bg-success rounded-full relative">
+                                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 transition-transform"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">Session Management</p>
+                                    <p class="text-xs text-text-secondary">3 active sessions</p>
+                                </div>
+                                <button class="text-sm text-secondary hover:text-secondary-600">Manage</button>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">API Keys</p>
+                                    <p class="text-xs text-text-secondary">2 active keys</p>
+                                </div>
+                                <button class="text-sm text-secondary hover:text-secondary-600">Manage</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Notification Preferences -->
+                    <div class="card">
+                        <h3 class="text-lg font-semibold text-primary mb-4">Notifications</h3>
+                        
+                        <div class="space-y-4">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">Email Notifications</p>
+                                    <p class="text-xs text-text-secondary">Analysis completion alerts</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-10 h-6 bg-success rounded-full relative">
+                                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 transition-transform"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">Team Activity</p>
+                                    <p class="text-xs text-text-secondary">Member actions and updates</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-10 h-6 bg-border rounded-full relative">
+                                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 left-1 transition-transform"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <p class="text-sm font-medium text-primary">Usage Alerts</p>
+                                    <p class="text-xs text-text-secondary">Plan limit notifications</p>
+                                </div>
+                                <div class="flex items-center">
+                                    <div class="w-10 h-6 bg-success rounded-full relative">
+                                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 right-1 transition-transform"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Plan Optimization -->
+                    <div class="card bg-gradient-to-r from-secondary-50 to-accent-50">
+                        <div class="flex items-center mb-4">
+                            <div class="w-10 h-10 bg-secondary rounded-lg flex items-center justify-center mr-3">
+                                <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                </svg>
+                            </div>
+                            <h3 class="text-lg font-semibold text-primary">Plan Optimization</h3>
+                        </div>
+                        
+                        <p class="text-sm text-text-secondary mb-4">
+                            Based on your usage patterns, you could save $23/month by switching to our Enterprise plan.
+                        </p>
+                        
+                        <div class="flex space-x-2">
+                            <button class="btn-secondary text-sm px-4 py-2">View Recommendations</button>
+                            <button class="border border-border text-primary text-sm px-4 py-2 rounded-lg hover:bg-surface transition-colors">
+                                Compare Plans
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-primary-900 text-white py-16 mt-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center mb-4">
+                        <svg class="h-8 w-8 text-secondary mr-3" viewBox="0 0 32 32" fill="currentColor">
+                            <path d="M4 8h6v16H4V8zm8-4h6v20h-6V4zm8 8h6v12h-6V12z"/>
+                            <circle cx="26" cy="6" r="2" fill="currentColor"/>
+                            <path d="M24 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                        <span class="text-xl font-bold">DataFlow Analytics</span>
+                    </div>
+                    <p class="text-primary-200 mb-4">
+                        Transforming data complexity into clear insights with AI-powered analytics.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M20 10c0-5.523-4.477-10-10-10S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z"/>
+                            </svg>
+                        </a>
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"/>
+                            </svg>
+                        </a>
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Product Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Product</h3>
+                    <ul class="space-y-2">
+                        <li><a href="analytics_dashboard.html" class="text-primary-200 hover:text-white transition-colors">Dashboard</a></li>
+                        <li><a href="pricing_plans.html" class="text-primary-200 hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">API</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Integrations</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="getting_started.html" class="text-primary-200 hover:text-white transition-colors">Getting Started</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Case Studies</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Support Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Contact Us</a></li>
+                        <li><a href="account_management.html" class="text-primary-200 hover:text-white transition-colors">Account</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Status</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-primary-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-primary-200 text-sm">
+                    © 2025 DataFlow Analytics. All Rights Reserved.
+                </p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Privacy Policy</a>
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Terms of Service</a>
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Security</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Toggle switches functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggles = document.querySelectorAll('.w-10.h-6');
+            
+            toggles.forEach(toggle => {
+                toggle.addEventListener('click', function() {
+                    const slider = this.querySelector('div');
+                    const isActive = this.classList.contains('bg-success');
+                    
+                    if (isActive) {
+                        this.classList.remove('bg-success');
+                        this.classList.add('bg-border');
+                        slider.classList.remove('right-1');
+                        slider.classList.add('left-1');
+                    } else {
+                        this.classList.remove('bg-border');
+                        this.classList.add('bg-success');
+                        slider.classList.remove('left-1');
+                        slider.classList.add('right-1');
+                    }
+                });
+            });
+        });
+
+        // Animate usage chart on scroll
+        function animateChart() {
+            const chart = document.querySelector('svg');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const circles = entry.target.querySelectorAll('circle');
+                        circles.forEach((circle, index) => {
+                            setTimeout(() => {
+                                circle.classList.add('animate-pulse');
+                            }, index * 200);
+                        });
+                        observer.unobserve(entry.target);
+                    }
+                });
+            });
+            
+            if (chart) observer.observe(chart);
+        }
+        
+        // Initialize animations when page loads
+        document.addEventListener('DOMContentLoaded', animateChart);
+    </script>
+<script id="dhws-dataInjector" src="../public/dhws-data-injector.js"></script>
+</body>
+</html>

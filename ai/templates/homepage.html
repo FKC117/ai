@@ -1,0 +1,594 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>DataFlow Analytics - Transform Data Complexity Into Clear Insights</title>
+    <link rel="stylesheet" href="{% static 'css/main.css' %}" />
+    <meta name="description" content="AI-powered data analytics platform that transforms complex analysis into intuitive insights. Start your free trial today." />
+</head>
+<body class="bg-background">
+    <!-- Navigation Header -->
+    <nav class="bg-white shadow-subtle border-b border-border-light sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <!-- Logo -->
+                <div class="flex items-center">
+                    <svg class="h-8 w-8 text-primary mr-3" viewBox="0 0 32 32" fill="currentColor">
+                        <path d="M4 8h6v16H4V8zm8-4h6v20h-6V4zm8 8h6v12h-6V12z"/>
+                        <circle cx="26" cy="6" r="2" fill="currentColor"/>
+                        <path d="M24 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                    </svg>
+                    <span class="text-xl font-bold text-primary">DataFlow Analytics</span>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="{% url 'homepage' %}" class="text-primary font-medium">Home</a>
+                    <a href="{% url 'pricing' %}" class="text-text-secondary hover:text-primary transition-colors">Pricing</a>
+                    <a href="{% url 'getting_started' %}" class="text-text-secondary hover:text-primary transition-colors">Get Started</a>
+                    <a href="{% url 'analytics_dashboard' %}" class="text-text-secondary hover:text-primary transition-colors">Dashboard</a>
+                    <a href="{% url 'account_management' %}" class="text-text-secondary hover:text-primary transition-colors">Account</a>
+                </div>
+                
+                <!-- CTA Buttons -->
+                <div class="hidden md:flex items-center space-x-4">
+                    {% if user.is_authenticated %}
+                        <span class="text-text-secondary">Welcome, {{ user.username }}</span>
+                        <a href="{% url 'signout' %}" class="text-primary hover:text-primary-700 font-medium">Sign Out</a>
+                    {% else %}
+                        <a href="{% url 'signin' %}" class="text-primary hover:text-primary-700 font-medium">Sign In</a>
+                        <a href="{% url 'signup' %}" class="btn-secondary">Sign Up</a>
+                    {% endif %}
+                </div>
+                
+                <!-- Mobile Menu Button -->
+                <button class="md:hidden p-2 rounded-lg hover:bg-surface">
+                    <svg class="h-6 w-6 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section with Interactive Demo -->
+    <section class="relative bg-gradient-to-br from-primary-50 to-secondary-50 overflow-hidden">
+        <div class="absolute inset-0 bg-white opacity-80"></div>
+        <div class="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 lg:py-28">
+            <div class="grid lg:grid-cols-2 gap-12 items-center">
+                <!-- Hero Content -->
+                <div class="text-center lg:text-left">
+                    <h1 class="text-4xl lg:text-6xl font-bold text-primary mb-6 leading-tight">
+                        Transform Data Complexity Into 
+                        <span class="text-secondary">Clear Insights</span>
+                    </h1>
+                    <p class="text-xl text-text-secondary mb-8 leading-relaxed">
+                        AI-powered analytics platform that bridges the gap between raw data and actionable intelligence. 
+                        Turn complex analysis into intuitive insights in minutes, not hours.
+                    </p>
+                    
+                    <!-- CTA Buttons -->
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
+                        <button class="btn-secondary text-lg px-8 py-4">
+                            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                            </svg>
+                            Start Free Trial
+                        </button>
+                        <button class="border-2 border-primary text-primary px-8 py-4 rounded-lg font-semibold hover:bg-primary hover:text-white transition-all duration-250">
+                            <svg class="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h1m4 0h1m-6 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                            Watch 3-Min Demo
+                        </button>
+                    </div>
+                    
+                    <!-- Trust Indicators -->
+                    <div class="flex items-center justify-center lg:justify-start space-x-6 text-sm text-text-secondary">
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 text-success mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            No credit card required
+                        </div>
+                        <div class="flex items-center">
+                            <svg class="w-4 h-4 text-success mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/>
+                            </svg>
+                            14-day free trial
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Interactive Demo Widget -->
+                <div class="relative">
+                    <div class="card-elevated p-6 bg-white">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-primary">Live Analysis Demo</h3>
+                            <div class="flex items-center text-sm text-success">
+                                <div class="w-2 h-2 bg-success rounded-full mr-2 animate-pulse"></div>
+                                Processing
+                            </div>
+                        </div>
+                        
+                        <!-- Sample Data Visualization -->
+                        <div class="mb-6">
+                            <div class="flex justify-between items-center mb-2">
+                                <span class="text-sm text-text-secondary">Revenue Analysis</span>
+                                <span class="text-sm font-medium text-accent">+23.4%</span>
+                            </div>
+                            <div class="h-32 bg-gradient-to-r from-secondary-100 to-accent-100 rounded-lg p-4 relative overflow-hidden">
+                                <svg class="w-full h-full" viewBox="0 0 300 100">
+                                    <path d="M0,80 Q75,20 150,40 T300,10" stroke="url(#gradient)" stroke-width="3" fill="none"/>
+                                    <defs>
+                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                                            <stop offset="0%" style="stop-color:#38b2ac"/>
+                                            <stop offset="100%" style="stop-color:#ed8936"/>
+                                        </linearGradient>
+                                    </defs>
+                                    <circle cx="75" cy="50" r="4" fill="#38b2ac" class="animate-pulse"/>
+                                    <circle cx="150" cy="40" r="4" fill="#ed8936" class="animate-pulse"/>
+                                    <circle cx="225" cy="25" r="4" fill="#38b2ac" class="animate-pulse"/>
+                                </svg>
+                            </div>
+                        </div>
+                        
+                        <!-- AI Insight -->
+                        <div class="bg-secondary-50 rounded-lg p-4">
+                            <div class="flex items-start">
+                                <div class="w-8 h-8 bg-secondary rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <p class="text-sm font-medium text-primary mb-1">AI Insight</p>
+                                    <p class="text-sm text-text-secondary">Revenue shows strong upward trend with 23.4% growth. Peak performance in Q3 suggests seasonal optimization opportunities.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Platform Metrics -->
+    <section class="bg-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
+                <div class="p-6">
+                    <div class="text-4xl font-bold text-primary mb-2" id="counter1">2.3M+</div>
+                    <p class="text-text-secondary">Analyses Completed</p>
+                </div>
+                <div class="p-6">
+                    <div class="text-4xl font-bold text-secondary mb-2" id="counter2">47%</div>
+                    <p class="text-text-secondary">Average Time Savings</p>
+                </div>
+                <div class="p-6">
+                    <div class="text-4xl font-bold text-accent mb-2" id="counter3">94%</div>
+                    <p class="text-text-secondary">User Satisfaction</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Three-Panel Dashboard Preview -->
+    <section class="bg-surface py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl lg:text-4xl font-bold text-primary mb-4">
+                    Experience the Complete Analytics Workflow
+                </h2>
+                <p class="text-xl text-text-secondary max-w-3xl mx-auto">
+                    Our three-panel interface streamlines your entire analysis process from data input to AI-powered insights
+                </p>
+            </div>
+            
+            <div class="grid lg:grid-cols-3 gap-8">
+                <!-- Statistical Parameters Panel -->
+                <div class="card hover:shadow-primary transition-all duration-400 cursor-pointer">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-primary">Statistical Parameters</h3>
+                    </div>
+                    <p class="text-text-secondary mb-4">Configure analysis parameters with intuitive controls and real-time validation</p>
+                    
+                    <!-- Sample Parameter Controls -->
+                    <div class="space-y-3">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-text-secondary">Confidence Level</span>
+                            <span class="text-sm font-medium text-primary">95%</span>
+                        </div>
+                        <div class="w-full bg-border rounded-full h-2">
+                            <div class="bg-primary h-2 rounded-full" style="width: 95%"></div>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-text-secondary">Sample Size</span>
+                            <span class="text-sm font-medium text-secondary">1,247</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Analysis Workspace Panel -->
+                <div class="card hover:shadow-primary transition-all duration-400 cursor-pointer">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-secondary-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-primary">Analysis Workspace</h3>
+                    </div>
+                    <p class="text-text-secondary mb-4">Interactive data visualization and real-time analysis results</p>
+                    
+                    <!-- Sample Chart -->
+                    <div class="h-24 bg-gradient-to-r from-secondary-50 to-accent-50 rounded-lg flex items-center justify-center">
+                        <svg class="w-16 h-16 text-secondary opacity-60" viewBox="0 0 64 64">
+                            <circle cx="32" cy="32" r="25" fill="none" stroke="currentColor" stroke-width="4"/>
+                            <path d="M32 7 A25 25 0 0 1 57 32" fill="none" stroke="#ed8936" stroke-width="4"/>
+                            <path d="M32 7 A25 25 0 0 1 45 52" fill="none" stroke="#38b2ac" stroke-width="4"/>
+                        </svg>
+                    </div>
+                </div>
+                
+                <!-- AI Chat Interface Panel -->
+                <div class="card hover:shadow-primary transition-all duration-400 cursor-pointer">
+                    <div class="flex items-center mb-4">
+                        <div class="w-10 h-10 bg-accent-100 rounded-lg flex items-center justify-center mr-3">
+                            <svg class="w-5 h-5 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-semibold text-primary">AI Chat Interface</h3>
+                    </div>
+                    <p class="text-text-secondary mb-4">Get instant insights and explanations through natural language queries</p>
+                    
+                    <!-- Sample Chat -->
+                    <div class="space-y-2">
+                        <div class="bg-surface rounded-lg p-2 text-sm">
+                            <span class="text-text-secondary">You:</span> What's driving the revenue increase?
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-2 text-sm">
+                            <span class="text-accent font-medium">AI:</span> The 23% increase is primarily driven by Q3 seasonal trends and improved conversion rates.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Client Logos -->
+    <section class="bg-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-12">
+                <p class="text-text-secondary font-medium">Trusted by leading organizations across industries</p>
+            </div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-8 items-center opacity-60">
+                <!-- Finance Logo -->
+                <div class="flex justify-center">
+                    <div class="text-2xl font-bold text-primary">FinanceFlow</div>
+                </div>
+                <!-- Healthcare Logo -->
+                <div class="flex justify-center">
+                    <div class="text-2xl font-bold text-secondary">HealthMetrics</div>
+                </div>
+                <!-- Retail Logo -->
+                <div class="flex justify-center">
+                    <div class="text-2xl font-bold text-accent">RetailInsight</div>
+                </div>
+                <!-- Tech Logo -->
+                <div class="flex justify-center">
+                    <div class="text-2xl font-bold text-primary">TechAnalytics</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section class="bg-surface py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl lg:text-4xl font-bold text-primary mb-4">
+                    Powerful Features for Modern Analytics
+                </h2>
+                <p class="text-xl text-text-secondary max-w-3xl mx-auto">
+                    Everything you need to transform complex data into actionable insights
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- AI-Powered Insights -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-secondary-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-secondary group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-secondary group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">AI-Powered Insights</h3>
+                    <p class="text-text-secondary">Advanced machine learning algorithms automatically identify patterns, anomalies, and actionable insights in your data.</p>
+                </div>
+                
+                <!-- Collaborative Workflows -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-accent-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-accent group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-accent group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Collaborative Workflows</h3>
+                    <p class="text-text-secondary">Share analyses, collaborate in real-time, and maintain version control across your entire team.</p>
+                </div>
+                
+                <!-- Export Capabilities -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-primary-100 rounded-lg flex items-center justify-center mb-4 group-hover:bg-primary group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-primary group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Export Capabilities</h3>
+                    <p class="text-text-secondary">Generate professional reports in PDF, Word, and Excel formats with customizable templates and branding.</p>
+                </div>
+                
+                <!-- Real-time Processing -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-success/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-success group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-success group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Real-time Processing</h3>
+                    <p class="text-text-secondary">Process large datasets instantly with our cloud-based infrastructure and see results update in real-time.</p>
+                </div>
+                
+                <!-- Security & Compliance -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-warning/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-warning group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-warning group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">Security & Compliance</h3>
+                    <p class="text-text-secondary">Enterprise-grade security with SOC 2 compliance, GDPR compliance, and end-to-end encryption.</p>
+                </div>
+                
+                <!-- API Integration -->
+                <div class="card hover:shadow-primary transition-all duration-400 group cursor-pointer">
+                    <div class="w-12 h-12 bg-error/10 rounded-lg flex items-center justify-center mb-4 group-hover:bg-error group-hover:text-white transition-all duration-250">
+                        <svg class="w-6 h-6 text-error group-hover:text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl font-semibold text-primary mb-3">API Integration</h3>
+                    <p class="text-text-secondary">Connect with your existing tools and workflows through our comprehensive REST API and webhooks.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Testimonials Carousel -->
+    <section class="bg-white py-20">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <h2 class="text-3xl lg:text-4xl font-bold text-primary mb-4">
+                    What Our Users Say
+                </h2>
+                <p class="text-xl text-text-secondary">
+                    Real stories from data professionals who transformed their workflow
+                </p>
+            </div>
+            
+            <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+                <!-- Testimonial 1 -->
+                <div class="card">
+                    <div class="flex items-center mb-4">
+                        <img src="https://images.unsplash.com/photo-1494790108755-2616b612b786?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Sarah Chen" class="w-12 h-12 rounded-full object-cover mr-4" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                        <div>
+                            <h4 class="font-semibold text-primary">Sarah Chen</h4>
+                            <p class="text-sm text-text-secondary">Senior Data Analyst, FinanceFlow</p>
+                        </div>
+                    </div>
+                    <p class="text-text-secondary mb-4">"DataFlow Analytics reduced our monthly reporting time from 3 days to 4 hours. The AI insights helped us identify revenue opportunities we completely missed before."</p>
+                    <div class="flex text-accent">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 2 -->
+                <div class="card">
+                    <div class="flex items-center mb-4">
+                        <img src="https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Marcus Rodriguez" class="w-12 h-12 rounded-full object-cover mr-4" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                        <div>
+                            <h4 class="font-semibold text-primary">Marcus Rodriguez</h4>
+                            <p class="text-sm text-text-secondary">Business Intelligence Manager, RetailInsight</p>
+                        </div>
+                    </div>
+                    <p class="text-text-secondary mb-4">"The collaborative features are game-changing. Our team can now work on analyses simultaneously, and the AI chat helps explain complex statistical concepts to stakeholders."</p>
+                    <div class="flex text-accent">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    </div>
+                </div>
+                
+                <!-- Testimonial 3 -->
+                <div class="card">
+                    <div class="flex items-center mb-4">
+                        <img src="https://images.unsplash.com/photo-1438761681033-6461ffad8d80?q=80&w=150&h=150&auto=format&fit=crop&ixlib=rb-4.0.3" alt="Dr. Emily Watson" class="w-12 h-12 rounded-full object-cover mr-4" onerror="this.src='https://images.unsplash.com/photo-1584824486509-112e4181ff6b?q=80&w=2940&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'; this.onerror=null;" />
+                        <div>
+                            <h4 class="font-semibold text-primary">Dr. Emily Watson</h4>
+                            <p class="text-sm text-text-secondary">Research Director, HealthMetrics</p>
+                        </div>
+                    </div>
+                    <p class="text-text-secondary mb-4">"As a researcher, I need statistical rigor without complexity. DataFlow provides both - sophisticated analysis with intuitive interfaces. It's transformed our research workflow."</p>
+                    <div class="flex text-accent">
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                        <svg class="w-4 h-4 fill-current" viewBox="0 0 20 20"><path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"/></svg>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Final CTA Section -->
+    <section class="bg-primary py-20">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <h2 class="text-3xl lg:text-4xl font-bold text-white mb-6">
+                Ready to Transform Your Data Analysis?
+            </h2>
+            <p class="text-xl text-primary-100 mb-8">
+                Join thousands of data professionals who've already discovered the power of AI-assisted analytics
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <button class="bg-secondary text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-secondary-600 transition-all duration-250">
+                    Start Your Free Trial
+                </button>
+                <button class="border-2 border-white text-white px-8 py-4 rounded-lg font-semibold text-lg hover:bg-white hover:text-primary transition-all duration-250">
+                    Schedule a Demo
+                </button>
+            </div>
+            <p class="text-primary-200 text-sm mt-4">
+                No credit card required • 14-day free trial • Cancel anytime
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-primary-900 text-white py-16">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+                <!-- Company Info -->
+                <div>
+                    <div class="flex items-center mb-4">
+                        <svg class="h-8 w-8 text-secondary mr-3" viewBox="0 0 32 32" fill="currentColor">
+                            <path d="M4 8h6v16H4V8zm8-4h6v20h-6V4zm8 8h6v12h-6V12z"/>
+                            <circle cx="26" cy="6" r="2" fill="currentColor"/>
+                            <path d="M24 8l4 4-4 4" stroke="currentColor" stroke-width="2" fill="none"/>
+                        </svg>
+                        <span class="text-xl font-bold">DataFlow Analytics</span>
+                    </div>
+                    <p class="text-primary-200 mb-4">
+                        Transforming data complexity into clear insights with AI-powered analytics.
+                    </p>
+                    <div class="flex space-x-4">
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M20 10c0-5.523-4.477-10-10-10S0 4.477 0 10c0 4.991 3.657 9.128 8.438 9.878v-6.987h-2.54V10h2.54V7.797c0-2.506 1.492-3.89 3.777-3.89 1.094 0 2.238.195 2.238.195v2.46h-1.26c-1.243 0-1.63.771-1.63 1.562V10h2.773l-.443 2.89h-2.33v6.988C16.343 19.128 20 14.991 20 10z"/>
+                            </svg>
+                        </a>
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M6.29 18.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0020 3.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.107 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.073 4.073 0 01.8 7.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 010 16.407a11.616 11.616 0 006.29 1.84"/>
+                            </svg>
+                        </a>
+                        <a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">
+                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fill-rule="evenodd" d="M16.338 16.338H13.67V12.16c0-.995-.017-2.277-1.387-2.277-1.39 0-1.601 1.086-1.601 2.207v4.248H8.014v-8.59h2.559v1.174h.037c.356-.675 1.227-1.387 2.526-1.387 2.703 0 3.203 1.778 3.203 4.092v4.711zM5.005 6.575a1.548 1.548 0 11-.003-3.096 1.548 1.548 0 01.003 3.096zm-1.337 9.763H6.34v-8.59H3.667v8.59zM17.668 1H2.328C1.595 1 1 1.581 1 2.298v15.403C1 18.418 1.595 19 2.328 19h15.34c.734 0 1.332-.582 1.332-1.299V2.298C19 1.581 18.402 1 17.668 1z"/>
+                            </svg>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Product Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Product</h3>
+                    <ul class="space-y-2">
+                        <li><a href="analytics_dashboard.html" class="text-primary-200 hover:text-white transition-colors">Dashboard</a></li>
+                        <li><a href="pricing_plans.html" class="text-primary-200 hover:text-white transition-colors">Pricing</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">API</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Integrations</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Resources Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Resources</h3>
+                    <ul class="space-y-2">
+                        <li><a href="getting_started.html" class="text-primary-200 hover:text-white transition-colors">Getting Started</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Documentation</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Case Studies</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Community</a></li>
+                    </ul>
+                </div>
+                
+                <!-- Support Links -->
+                <div>
+                    <h3 class="text-lg font-semibold mb-4">Support</h3>
+                    <ul class="space-y-2">
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Help Center</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Contact Us</a></li>
+                        <li><a href="account_management.html" class="text-primary-200 hover:text-white transition-colors">Account</a></li>
+                        <li><a href="javascript:void(0)" class="text-primary-200 hover:text-white transition-colors">Status</a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="border-t border-primary-700 mt-12 pt-8 flex flex-col md:flex-row justify-between items-center">
+                <p class="text-primary-200 text-sm">
+                    © 2025 DataFlow Analytics. All Rights Reserved.
+                </p>
+                <div class="flex space-x-6 mt-4 md:mt-0">
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Privacy Policy</a>
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Terms of Service</a>
+                    <a href="javascript:void(0)" class="text-primary-200 hover:text-white text-sm transition-colors">Security</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Animate counters on scroll
+        function animateCounters() {
+            const counters = document.querySelectorAll('[id^="counter"]');
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const counter = entry.target;
+                        const target = counter.textContent;
+                        counter.textContent = '0';
+                        
+                        const increment = () => {
+                            const current = parseInt(counter.textContent);
+                            const targetNum = parseInt(target.replace(/[^\d]/g, ''));
+                            const step = targetNum / 50;
+                            
+                            if (current < targetNum) {
+                                counter.textContent = Math.ceil(current + step) + target.replace(/[\d]/g, '').replace(/\./g, '');
+                                setTimeout(increment, 30);
+                            } else {
+                                counter.textContent = target;
+                            }
+                        };
+                        
+                        increment();
+                        observer.unobserve(counter);
+                    }
+                });
+            });
+            
+            counters.forEach(counter => observer.observe(counter));
+        }
+        
+        // Initialize animations when page loads
+        document.addEventListener('DOMContentLoaded', animateCounters);
+    </script>
+<script id="dhws-dataInjector" src="../public/dhws-data-injector.js"></script>
+</body>
+</html>
