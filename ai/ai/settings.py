@@ -135,3 +135,21 @@ LOGIN_REDIRECT_URL = '/'
 
 # Custom User Model (temporarily disabled for migration)
 # AUTH_USER_MODEL = 'analyticabd.CustomUser'
+
+# AI and Caching Configuration
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        },
+        'KEY_PREFIX': 'dataflow_analytics',
+        'TIMEOUT': int(os.getenv('CACHE_TTL', 3600)),
+    }
+}
+
+# AI Configuration
+LLM_CACHE_TIMEOUT = 1800  # 30 minutes
+TOOL_RESULTS_CACHE_TIMEOUT = 7200  # 2 hours
+USER_SESSION_CACHE_TIMEOUT = 3600  # 1 hour

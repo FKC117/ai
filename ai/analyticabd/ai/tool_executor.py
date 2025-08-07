@@ -136,17 +136,24 @@ class ToolExecutor:
                 }
             else:
                 # No tool execution needed, generate general response
-                response = self.llm_client.chat(message, context)
-                conversation_manager.add_message('assistant', response)
-                
-                return {
-                    'response': response,
-                    'tool_executed': None,
-                    'metadata': {
-                        'session_id': session_id,
-                        'user_id': user_id
+                try:
+                    response = self.llm_client.chat(message, context)
+                    conversation_manager.add_message('assistant', response)
+                    
+                    return {
+                        'response': response,
+                        'tool_executed': None,
+                        'metadata': {
+                            'session_id': session_id,
+                            'user_id': user_id
+                        }
                     }
-                }
+                except Exception as e:
+                    logger.error(f"Error in LLM chat: {str(e)}")
+                    return {
+                        'error': f'Error generating response: {str(e)}',
+                        'response': 'I encountered an error while processing your request. Please try again.'
+                    }
                 
         except Exception as e:
             logger.error(f"Error processing chat message: {str(e)}")
