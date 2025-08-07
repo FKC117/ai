@@ -835,6 +835,28 @@
                         <div id="main-chart" class="h-96 w-full"></div>
                     </div>
 
+                    <!-- AI Data Pass Section -->
+                    <div class="bg-white border-t border-border-light p-4" id="ai-data-section">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center">
+                                    <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <h4 class="text-sm font-medium text-primary">AI Assistant Ready</h4>
+                                    <p class="text-xs text-text-secondary" id="ai-context-info">Click to pass current dataset and analysis context to AI</p>
+                                </div>
+                            </div>
+                            <button class="btn-accent px-4 py-2 text-sm" id="pass-data-to-ai">
+                                <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/>
+                                </svg>
+                                Pass Data to AI
+                            </button>
+                        </div>
+                    </div>
 
                 </div>
             </div>
@@ -1172,6 +1194,23 @@
                 // Save current dataset to backend
                 if (datasets[index]) {
                     saveCurrentDataset(datasets[index].id);
+                    
+                    // Set current dataset for AI chat
+                    currentDatasetId = datasets[index].id;
+                    currentDatasetName = datasets[index].name;
+                    
+                    // Update AI context info
+                    if (aiContextInfo) {
+                        aiContextInfo.textContent = `Dataset: ${datasets[index].name} | Analysis: ${currentAnalysisType || 'Summary Statistics'}`;
+                    }
+                    
+                    // Reset AI data button if dataset changes
+                    if (passDataButton) {
+                        passDataButton.disabled = false;
+                        passDataButton.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>Pass Data to AI';
+                        passDataButton.classList.remove('bg-success', 'text-white');
+                        passDataButton.classList.add('btn-accent');
+                    }
                     
                     // Record the dataset switch interaction
                     recordInteraction('dataset_switch', `Switched to dataset: ${datasets[index].name}`, {
@@ -2057,6 +2096,14 @@
                 document.getElementById('summary-statistics-content').classList.remove('hidden');
                 document.getElementById('main-chart-container').classList.add('hidden');
                 
+                // Set current analysis type for AI chat
+                currentAnalysisType = 'Summary Statistics';
+                
+                // Update AI context info if available
+                if (aiContextInfo && currentDatasetName) {
+                    aiContextInfo.textContent = `Dataset: ${currentDatasetName} | Analysis: ${currentAnalysisType}`;
+                }
+                
                 // Get current dataset
                 const currentDataset = datasets[currentDatasetIndex];
                 console.log('Debug: Current dataset:', currentDataset);
@@ -2307,16 +2354,89 @@
                 }, 2000);
             });
             
-            // Chat functionality
+            // AI Chat functionality
             const chatInput = document.getElementById('chat-input');
             const sendButton = document.getElementById('send-message');
             const chatMessages = document.getElementById('chat-messages');
+            const passDataButton = document.getElementById('pass-data-to-ai');
+            const aiContextInfo = document.getElementById('ai-context-info');
             
-            function sendMessage() {
+            let currentSessionId = null;
+            let currentDatasetId = null;
+            let currentAnalysisType = null;
+            let conversationHistory = [];
+            let userInitials = '{{ user.first_name|first }}{{ user.last_name|first }}' || 'U';
+            
+            // Initialize chat session
+            function initializeChatSession() {
+                currentSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                conversationHistory = [];
+                
+                // Clear existing messages except welcome
+                const welcomeMessage = chatMessages.querySelector('.flex.items-start:first-child');
+                chatMessages.innerHTML = '';
+                if (welcomeMessage) {
+                    chatMessages.appendChild(welcomeMessage);
+                }
+            }
+            
+            // Pass data to AI
+            passDataButton.addEventListener('click', function() {
+                if (currentDatasetId) {
+                    // Update context info
+                    aiContextInfo.textContent = `Dataset: ${currentDatasetName || 'Current Dataset'} | Analysis: ${currentAnalysisType || 'Summary Statistics'}`;
+                    
+                    // Add system message to chat
+                    const systemMessage = document.createElement('div');
+                    systemMessage.className = 'flex items-start';
+                    systemMessage.innerHTML = `
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                            <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
+                        </div>
+                    `;
+                    chatMessages.appendChild(systemMessage);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                    
+                    // Store context in conversation history
+                    conversationHistory.push({
+                        role: 'system',
+                        content: `Dataset loaded: ${currentDatasetName || 'Current Dataset'} | Analysis type: ${currentAnalysisType || 'Summary Statistics'}`
+                    });
+                    
+                    // Update button state
+                    this.disabled = true;
+                    this.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Data Loaded';
+                    this.classList.remove('btn-accent');
+                    this.classList.add('bg-success', 'text-white');
+                } else {
+                    // Show error if no dataset
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'flex items-start';
+                    errorMessage.innerHTML = `
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                            <p class="text-sm text-text-primary">⚠️ Please upload a dataset first before passing data to AI.</p>
+                        </div>
+                    `;
+                    chatMessages.appendChild(errorMessage);
+                    chatMessages.scrollTop = chatMessages.scrollHeight;
+                }
+            });
+            
+            async function sendMessage() {
                 const message = chatInput.value.trim();
                 if (!message) return;
                 
-                // Add user message
+                // Add user message to UI
                 const userMessage = document.createElement('div');
                 userMessage.className = 'flex items-start justify-end';
                 userMessage.innerHTML = `
@@ -2324,34 +2444,147 @@
                         <p class="text-sm text-white">${message}</p>
                     </div>
                     <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
-                        JD
+                        ${userInitials || 'U'}
                     </div>
                 `;
                 chatMessages.appendChild(userMessage);
                 
+                // Store in conversation history
+                conversationHistory.push({
+                    role: 'user',
+                    content: message
+                });
+                
                 // Clear input
                 chatInput.value = '';
+                chatMessages.scrollTop = chatMessages.scrollHeight;
                 
-                // Simulate AI response
-                setTimeout(() => {
-                    const aiResponse = document.createElement('div');
-                    aiResponse.className = 'flex items-start';
-                    aiResponse.innerHTML = `
+                // Show typing indicator
+                const typingIndicator = document.createElement('div');
+                typingIndicator.className = 'flex items-start';
+                typingIndicator.innerHTML = `
+                    <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                        <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                    <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                        <div class="flex space-x-1">
+                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce"></div>
+                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
+                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
+                        </div>
+                    </div>
+                `;
+                chatMessages.appendChild(typingIndicator);
+                chatMessages.scrollTop = chatMessages.scrollHeight;
+                
+                try {
+                    // Send to AI backend
+                    const response = await fetch('/api/v1/chat/send_message/', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-CSRFToken': getCookie('csrftoken')
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            session_id: currentSessionId,
+                            context: {
+                                dataset_id: currentDatasetId,
+                                analysis_type: currentAnalysisType,
+                                conversation_history: conversationHistory.slice(-10) // Keep last 10 messages
+                            }
+                        })
+                    });
+                    
+                    // Remove typing indicator
+                    chatMessages.removeChild(typingIndicator);
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Add AI response to UI
+                        const aiResponse = document.createElement('div');
+                        aiResponse.className = 'flex items-start';
+                        aiResponse.innerHTML = `
+                            <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                                <p class="text-sm text-text-primary">${data.response}</p>
+                            </div>
+                        `;
+                        chatMessages.appendChild(aiResponse);
+                        
+                        // Store in conversation history
+                        conversationHistory.push({
+                            role: 'assistant',
+                            content: data.response
+                        });
+                        
+                    } else {
+                        // Show error response
+                        const errorResponse = document.createElement('div');
+                        errorResponse.className = 'flex items-start';
+                        errorResponse.innerHTML = `
+                            <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </div>
+                            <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
+                                <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
+                            </div>
+                        `;
+                        chatMessages.appendChild(errorResponse);
+                    }
+                    
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    
+                    // Remove typing indicator
+                    chatMessages.removeChild(typingIndicator);
+                    
+                    // Show error response
+                    const errorResponse = document.createElement('div');
+                    errorResponse.className = 'flex items-start';
+                    errorResponse.innerHTML = `
                         <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                             <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
                         <div class="bg-accent-50 rounded-lg p-3 max-w-xs">
-                            <p class="text-sm text-text-primary">I understand your question about "${message}". Based on your current analysis, I can provide specific insights. Would you like me to explain the statistical significance or suggest next steps?</p>
+                            <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
                         </div>
                     `;
-                    chatMessages.appendChild(aiResponse);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }, 1000);
+                    chatMessages.appendChild(errorResponse);
+                }
                 
                 chatMessages.scrollTop = chatMessages.scrollHeight;
             }
+            
+            // Helper function to get CSRF token
+            function getCookie(name) {
+                let cookieValue = null;
+                if (document.cookie && document.cookie !== '') {
+                    const cookies = document.cookie.split(';');
+                    for (let i = 0; i < cookies.length; i++) {
+                        const cookie = cookies[i].trim();
+                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                            break;
+                        }
+                    }
+                }
+                return cookieValue;
+            }
+            
+            // Initialize chat on page load
+            initializeChatSession();
             
             sendButton.addEventListener('click', sendMessage);
             chatInput.addEventListener('keypress', function(e) {

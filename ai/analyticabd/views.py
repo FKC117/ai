@@ -647,3 +647,47 @@ def get_warning_preferences(request):
         
     except Exception as e:
         return JsonResponse({'error': f'Error getting preferences: {str(e)}'}, status=500)
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def send_chat_message(request):
+    """Handle AI chat messages"""
+    try:
+        data = json.loads(request.body)
+        message = data.get('message')
+        session_id = data.get('session_id')
+        context = data.get('context', {})
+        
+        if not message:
+            return JsonResponse({'error': 'Message is required'}, status=400)
+        
+        # Import AI components
+        from .ai.tool_executor import ToolExecutor
+        from .ai.conversation_manager import ConversationManager
+        
+        # Initialize tool executor
+        tool_executor = ToolExecutor()
+        
+        # Process the message with AI
+        result = tool_executor.process_chat_message(
+            user_id=request.user.id,
+            message=message,
+            session_id=session_id,
+            context=context
+        )
+        
+        if result.get('error'):
+            return JsonResponse({'error': result['error']}, status=500)
+        
+        return JsonResponse({
+            'success': True,
+            'response': result['response'],
+            'tool_executed': result.get('tool_executed'),
+            'metadata': result.get('metadata', {})
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': f'Error processing chat message: {str(e)}'}, status=500)

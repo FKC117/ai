@@ -25,4 +25,7 @@ urlpatterns = [
     path('api/delete-dataset/', views.delete_dataset, name='delete_dataset'),
     path('api/warning-preferences/', views.get_warning_preferences, name='get_warning_preferences'),
     path('api/update-warning-preferences/', views.update_warning_preferences, name='update_warning_preferences'),
+    
+    # AI Chat endpoints
+    path('api/v1/chat/send_message/', views.send_chat_message, name='send_chat_message'),
 ]
