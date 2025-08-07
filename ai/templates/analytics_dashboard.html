@@ -9,6 +9,32 @@
     <meta name="description" content="Advanced analytics dashboard with AI-powered insights, real-time collaboration, and interactive data visualization." />
     <script src="https://d3js.org/d3.v7.min.js"></script>
 <script type="module" src="https://static.rocket.new/rocket-web.js?_cfg=https%3A%2F%2Fdataflowa6394back.builtwithrocket.new&_be=https%3A%2F%2Fapplication.rocket.new&_v=0.1.6"></script>
+
+<style>
+    /* Lightning highlight effect */
+    .lightning-highlight {
+        animation: lightning 0.5s ease-in-out;
+        box-shadow: 0 0 20px #3b82f6, 0 0 40px #3b82f6, 0 0 60px #3b82f6;
+        border-radius: 8px;
+        padding: 8px;
+        margin: -8px;
+    }
+    
+    @keyframes lightning {
+        0% {
+            box-shadow: 0 0 5px #3b82f6;
+            transform: scale(1);
+        }
+        50% {
+            box-shadow: 0 0 30px #3b82f6, 0 0 60px #3b82f6, 0 0 90px #3b82f6;
+            transform: scale(1.02);
+        }
+        100% {
+            box-shadow: 0 0 20px #3b82f6, 0 0 40px #3b82f6, 0 0 60px #3b82f6;
+            transform: scale(1);
+        }
+    }
+</style>
 </head>
 <body class="bg-background">
     <!-- Top Navigation -->
@@ -168,7 +194,7 @@
                 </div>
 
                 <!-- Statistical Tests Menu -->
-                <div class="mb-6">
+                <div class="mb-6 statistical-tests-section">
                     <h3 class="text-lg font-semibold text-primary mb-3">Statistical Tests</h3>
                     <div class="space-y-2 max-h-96 overflow-y-auto">
                         <!-- Descriptive Statistics -->
@@ -1022,8 +1048,7 @@
                         updateDatasetHistory();
                         updateDatasetCount();
                         
-                        // Always show blank state initially, even if dataset is loaded
-                        // User must explicitly select an analysis type
+                        // Show appropriate state - showBlankState() now handles the logic correctly
                         showBlankState();
                         
                         console.log('User state loaded:', {
@@ -1503,7 +1528,7 @@
                     blankStateDiv.className = 'blank-state-message flex flex-col items-center justify-center h-full py-12';
                     
                     // Check if we have a current dataset
-                    const hasDataset = datasets.length > 0 && currentDatasetIndex !== -1;
+                    const hasDataset = datasets.length > 0;
                     
                     blankStateDiv.innerHTML = `
                         <div class="w-24 h-24 bg-accent-50 rounded-full flex items-center justify-center mb-6">
@@ -1511,10 +1536,10 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
                             </svg>
                         </div>
-                        <h3 class="text-xl font-semibold text-primary mb-2">${hasDataset ? 'Select Analysis Type' : 'Start Your Analysis'}</h3>
+                        <h3 class="text-xl font-semibold text-primary mb-2">${hasDataset ? 'Ready to Analyze!' : 'Start Your Analysis'}</h3>
                         <p class="text-text-secondary text-center max-w-md mb-6">
                             ${hasDataset ? 
-                                'Choose a statistical test from the left panel to analyze your dataset.' : 
+                                'Your dataset is loaded and ready! Click the lightning button to explore powerful statistical tests.' : 
                                 'Upload a dataset and select a statistical test from the left panel to begin your analysis.'
                             }
                         </p>
@@ -1527,8 +1552,11 @@
                                     View History
                                 </button>
                             ` : `
-                                <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors" onclick="scrollToLeftPanel()">
-                                    View Analysis Options
+                                <button class="px-6 py-2 bg-accent text-white rounded-lg hover:bg-accent-dark transition-colors flex items-center space-x-2 animate-pulse" onclick="highlightAnalysisSection()">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                                    </svg>
+                                    <span>Start Your Analysis</span>
                                 </button>
                             `}
                         </div>
@@ -1556,6 +1584,27 @@
             // Function to show dataset history (same as dataset selector)
             window.showDatasetHistory = function() {
                 showDatasetSelector();
+            };
+            
+            // Function to highlight analysis section with lightning effect
+            window.highlightAnalysisSection = function() {
+                const leftPanel = document.getElementById('left-panel');
+                if (!leftPanel) return;
+                
+                // Scroll to left panel
+                leftPanel.scrollIntoView({ behavior: 'smooth' });
+                
+                // Add lightning effect to the statistical tests section
+                const statisticalTestsSection = leftPanel.querySelector('.statistical-tests-section');
+                if (statisticalTestsSection) {
+                    // Add lightning animation class
+                    statisticalTestsSection.classList.add('lightning-highlight');
+                    
+                    // Remove the effect after 3 seconds
+                    setTimeout(() => {
+                        statisticalTestsSection.classList.remove('lightning-highlight');
+                    }, 3000);
+                }
             };
             
             // Global variables for warning preferences and multiselect
