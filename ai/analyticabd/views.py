@@ -2,7 +2,16 @@ from django.shortcuts import render, redirect
 from django.contrib.auth import login, logout, authenticate
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.http import require_http_methods
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
+from .models import UserDataset, DatasetVariable
+import pandas as pd
+import numpy as np
+import json
+import os
+from datetime import datetime
 
 # Create your views here.
 def home(request):
@@ -70,3 +79,287 @@ def signout(request):
 @login_required
 def profile(request):
     return render(request, 'profile.html')
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def upload_dataset(request):
+    """Handle dataset upload and process it for summary statistics"""
+    try:
+        if 'file' not in request.FILES:
+            return JsonResponse({'error': 'No file uploaded'}, status=400)
+        
+        uploaded_file = request.FILES['file']
+        
+        # Validate file type
+        allowed_extensions = ['.csv', '.xlsx', '.xls', '.json']
+        file_extension = os.path.splitext(uploaded_file.name)[1].lower()
+        if file_extension not in allowed_extensions:
+            return JsonResponse({'error': 'Invalid file type. Please upload CSV, Excel, or JSON files.'}, status=400)
+        
+        # Validate file size (50MB limit)
+        if uploaded_file.size > 50 * 1024 * 1024:
+            return JsonResponse({'error': 'File size must be less than 50MB'}, status=400)
+        
+        # Read the file based on its type
+        try:
+            if file_extension == '.csv':
+                df = pd.read_csv(uploaded_file)
+            elif file_extension in ['.xlsx', '.xls']:
+                df = pd.read_excel(uploaded_file)
+            elif file_extension == '.json':
+                df = pd.read_json(uploaded_file)
+            else:
+                return JsonResponse({'error': 'Unsupported file format'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': f'Error reading file: {str(e)}'}, status=400)
+        
+        # Calculate basic statistics
+        rows, cols = df.shape
+        numeric_cols = df.select_dtypes(include=[np.number]).shape[1]
+        categorical_cols = df.select_dtypes(include=['object']).shape[1]
+        
+        # Calculate missing values percentage
+        missing_percentage = (df.isnull().sum().sum() / (rows * cols)) * 100 if rows * cols > 0 else 0
+        
+        # Calculate duplicate rows
+        duplicate_rows = df.duplicated().sum()
+        
+        # Create UserDataset object
+        dataset = UserDataset.objects.create(
+            user=request.user,
+            name=uploaded_file.name,
+            file=uploaded_file,
+            file_size=uploaded_file.size,
+            rows=rows,
+            columns=cols,
+            numeric_columns=numeric_cols,
+            categorical_columns=categorical_cols,
+            missing_values_percentage=missing_percentage,
+            duplicate_rows=duplicate_rows
+        )
+        
+        # Process each variable and create DatasetVariable objects
+        for column in df.columns:
+            try:
+                col_data = df[column]
+                missing_count = col_data.isnull().sum()
+                
+                # Determine data type
+                if pd.api.types.is_numeric_dtype(col_data):
+                    data_type = 'numeric'
+                    
+                    # Check if column has any non-null values
+                    if col_data.notna().sum() == 0:
+                        # All values are null/empty
+                        DatasetVariable.objects.create(
+                            dataset=dataset,
+                            name=column,
+                            data_type=data_type,
+                            count=len(col_data),
+                            missing_count=len(col_data),
+                            mean=None,
+                            std_dev=None,
+                            min_value=None,
+                            q25=None,
+                            median=None,
+                            q75=None,
+                            max_value=None,
+                            outliers_count=0
+                        )
+                        continue
+                    
+                    # Calculate numeric statistics only for non-null values
+                    non_null_data = col_data.dropna()
+                    if len(non_null_data) == 0:
+                        # All values are null after dropping
+                        DatasetVariable.objects.create(
+                            dataset=dataset,
+                            name=column,
+                            data_type=data_type,
+                            count=len(col_data),
+                            missing_count=len(col_data),
+                            mean=None,
+                            std_dev=None,
+                            min_value=None,
+                            q25=None,
+                            median=None,
+                            q75=None,
+                            max_value=None,
+                            outliers_count=0
+                        )
+                        continue
+                    
+                    # Calculate numeric statistics
+                    mean_val = non_null_data.mean()
+                    std_val = non_null_data.std()
+                    min_val = non_null_data.min()
+                    q25_val = non_null_data.quantile(0.25)
+                    median_val = non_null_data.median()
+                    q75_val = non_null_data.quantile(0.75)
+                    max_val = non_null_data.max()
+                    
+                    # Calculate outliers (using IQR method) only if we have enough data
+                    outliers = 0
+                    if len(non_null_data) > 1 and std_val > 0:
+                        Q1 = non_null_data.quantile(0.25)
+                        Q3 = non_null_data.quantile(0.75)
+                        IQR = Q3 - Q1
+                        if IQR > 0:
+                            outliers = ((non_null_data < (Q1 - 1.5 * IQR)) | (non_null_data > (Q3 + 1.5 * IQR))).sum()
+                    
+                    DatasetVariable.objects.create(
+                        dataset=dataset,
+                        name=column,
+                        data_type=data_type,
+                        count=len(col_data),
+                        missing_count=missing_count,
+                        mean=mean_val,
+                        std_dev=std_val,
+                        min_value=min_val,
+                        q25=q25_val,
+                        median=median_val,
+                        q75=q75_val,
+                        max_value=max_val,
+                        outliers_count=outliers
+                    )
+                else:
+                    data_type = 'categorical'
+                    # Calculate categorical statistics
+                    non_null_data = col_data.dropna()
+                    value_counts = non_null_data.value_counts()
+                    unique_count = len(value_counts)
+                    most_common_value = value_counts.index[0] if len(value_counts) > 0 else None
+                    most_common_count = value_counts.iloc[0] if len(value_counts) > 0 else 0
+                    
+                    DatasetVariable.objects.create(
+                        dataset=dataset,
+                        name=column,
+                        data_type=data_type,
+                        count=len(col_data),
+                        missing_count=missing_count,
+                        unique_values=unique_count,
+                        most_common_value=most_common_value,
+                        most_common_count=most_common_count
+                    )
+            except Exception as e:
+                # Log the error but continue processing other columns
+                print(f"Error processing column {column}: {str(e)}")
+                continue
+        
+        # Update outliers count for the dataset
+        total_outliers = sum([
+            var.outliers_count for var in dataset.variables.filter(data_type='numeric')
+        ])
+        dataset.outliers_count = total_outliers
+        dataset.save()
+        
+        return JsonResponse({
+            'success': True,
+            'dataset_id': dataset.id,
+            'name': dataset.name,
+            'rows': rows,
+            'columns': cols,
+            'file_size': f"{uploaded_file.size / (1024 * 1024):.1f} MB",
+            'message': f'Dataset "{uploaded_file.name}" uploaded successfully!'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error processing file: {str(e)}'}, status=500)
+
+@login_required
+def get_summary_statistics(request, dataset_id):
+    """Get summary statistics for a specific dataset"""
+    try:
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        variables = dataset.variables.all()
+        
+        # Prepare variable summary data using pandas describe approach
+        variable_summary = []
+        for var in variables:
+            if var.data_type == 'numeric':
+                # Format numeric values properly, handling null values
+                variable_summary.append({
+                    'name': var.name,
+                    'type': 'Numeric',
+                    'count': var.count,
+                    'mean': round(var.mean, 2) if var.mean is not None and not pd.isna(var.mean) else 'N/A',
+                    'std_dev': round(var.std_dev, 2) if var.std_dev is not None and not pd.isna(var.std_dev) else 'N/A',
+                    'min': round(var.min_value, 2) if var.min_value is not None and not pd.isna(var.min_value) else 'N/A',
+                    'q25': round(var.q25, 2) if var.q25 is not None and not pd.isna(var.q25) else 'N/A',
+                    'median': round(var.median, 2) if var.median is not None and not pd.isna(var.median) else 'N/A',
+                    'q75': round(var.q75, 2) if var.q75 is not None and not pd.isna(var.q75) else 'N/A',
+                    'max': round(var.max_value, 2) if var.max_value is not None and not pd.isna(var.max_value) else 'N/A'
+                })
+            else:
+                variable_summary.append({
+                    'name': var.name,
+                    'type': 'Categorical',
+                    'count': var.count,
+                    'mean': 'N/A',
+                    'std_dev': 'N/A',
+                    'min': 'N/A',
+                    'q25': 'N/A',
+                    'median': 'N/A',
+                    'q75': 'N/A',
+                    'max': 'N/A'
+                })
+        
+        # Calculate additional metrics with better null handling
+        numeric_vars = variables.filter(data_type='numeric')
+        skewed_vars = sum([1 for var in numeric_vars if var.std_dev and var.std_dev > 0 and not pd.isna(var.std_dev)])
+        normal_dist_vars = len(numeric_vars) - skewed_vars
+        high_variance_vars = sum([1 for var in numeric_vars if var.std_dev and var.std_dev > var.mean * 0.5 and not pd.isna(var.std_dev) and not pd.isna(var.mean)])
+        zero_variance_vars = sum([1 for var in numeric_vars if var.std_dev == 0 or pd.isna(var.std_dev)])
+        
+        summary_data = {
+            'dataset_overview': {
+                'total_rows': dataset.rows,
+                'total_columns': dataset.columns,
+                'numeric_columns': dataset.numeric_columns
+            },
+            'data_quality': {
+                'missing_values': f"{dataset.missing_values_percentage:.1f}%",
+                'duplicate_rows': dataset.duplicate_rows,
+                'outliers_count': dataset.outliers_count,
+                'data_completeness': f"{100 - dataset.missing_values_percentage:.1f}%"
+            },
+            'distribution_insights': {
+                'skewed_variables': skewed_vars,
+                'normal_distribution': normal_dist_vars,
+                'high_variance': high_variance_vars,
+                'zero_variance': zero_variance_vars
+            },
+            'variable_summary': variable_summary
+        }
+        
+        print(f"Debug: Sending summary data for dataset {dataset_id}")
+        print(f"Debug: Variable summary has {len(variable_summary)} variables")
+        for var in variable_summary[:3]:  # Print first 3 variables for debugging
+            print(f"Debug: Variable {var['name']} - {var['type']} - Mean: {var['mean']}")
+        
+        return JsonResponse(summary_data)
+        
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        print(f"Error in get_summary_statistics: {str(e)}")
+        return JsonResponse({'error': f'Error generating summary: {str(e)}'}, status=500)
+
+@login_required
+def get_user_datasets(request):
+    """Get all datasets for the current user"""
+    datasets = UserDataset.objects.filter(user=request.user, is_active=True)
+    dataset_list = []
+    
+    for dataset in datasets:
+        dataset_list.append({
+            'id': dataset.id,
+            'name': dataset.name,
+            'rows': dataset.rows,
+            'columns': dataset.columns,
+            'file_size': f"{dataset.file_size / (1024 * 1024):.1f} MB",
+            'uploaded_at': dataset.uploaded_at.strftime('%b %d, %Y')
+        })
+    
+    return JsonResponse({'datasets': dataset_list})
