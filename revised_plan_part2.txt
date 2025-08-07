@@ -1,0 +1,997 @@
+# REVISED AI-Powered Analytics System Implementation Guide - PART 2
+# DataFlow Analytics - LangChain + Gemini 1.5 Flash Integration with Caching
+# Version: 2.0
+
+================================================================================
+PHASE 7: REMAINING TOOL IMPLEMENTATIONS
+================================================================================
+
+STEP 7.1: Correlation Tool (ai/analyticabd/tools/correlation_tool.py)
+```python
+from .base_tool import BaseTool
+import pandas as pd
+import numpy as np
+from scipy import stats
+
+class CorrelationTool(BaseTool):
+    def get_description(self):
+        return "Perform comprehensive correlation analysis including Pearson, Spearman, and Kendall correlations"
+    
+    def get_parameters_schema(self):
+        return {
+            "correlation_type": {"type": "string", "default": "pearson", "options": ["pearson", "spearman", "kendall"]},
+            "significance_level": {"type": "float", "default": 0.05},
+            "min_correlation": {"type": "float", "default": 0.3}
+        }
+    
+    def execute(self, parameters=None):
+        cached_results = self.cache_manager.get_cached_tool_results(
+            self.tool_name, self.dataset_id, parameters
+        )
+        if cached_results:
+            return cached_results
+        
+        self.load_dataset()
+        
+        correlation_type = parameters.get('correlation_type', 'pearson') if parameters else 'pearson'
+        significance_level = parameters.get('significance_level', 0.05) if parameters else 0.05
+        min_correlation = parameters.get('min_correlation', 0.3) if parameters else 0.3
+        
+        numeric_cols = self.dataset.select_dtypes(include=[np.number]).columns
+        
+        if len(numeric_cols) < 2:
+            return {'error': 'Need at least 2 numeric variables for correlation analysis'}
+        
+        results = {
+            'correlation_matrix': self._calculate_correlation_matrix(numeric_cols, correlation_type),
+            'significant_correlations': self._find_significant_correlations(numeric_cols, correlation_type, significance_level),
+            'strong_correlations': self._find_strong_correlations(numeric_cols, correlation_type, min_correlation),
+            'correlation_heatmap_data': self._prepare_heatmap_data(numeric_cols, correlation_type),
+            'statistical_tests': self._perform_correlation_tests(numeric_cols, correlation_type, significance_level)
+        }
+        
+        self.cache_manager.cache_tool_results(
+            self.tool_name, self.dataset_id, parameters, results
+        )
+        
+        return results
+    
+    def _calculate_correlation_matrix(self, columns, correlation_type):
+        if correlation_type == 'pearson':
+            corr_matrix = self.dataset[columns].corr(method='pearson')
+        elif correlation_type == 'spearman':
+            corr_matrix = self.dataset[columns].corr(method='spearman')
+        elif correlation_type == 'kendall':
+            corr_matrix = self.dataset[columns].corr(method='kendall')
+        else:
+            corr_matrix = self.dataset[columns].corr(method='pearson')
+        
+        return corr_matrix.to_dict()
+    
+    def _find_significant_correlations(self, columns, correlation_type, significance_level):
+        significant_correlations = []
+        
+        for i, col1 in enumerate(columns):
+            for j, col2 in enumerate(columns):
+                if i < j:
+                    col1_data = self.dataset[col1].dropna()
+                    col2_data = self.dataset[col2].dropna()
+                    
+                    common_indices = col1_data.index.intersection(col2_data.index)
+                    if len(common_indices) > 3:
+                        aligned_col1 = col1_data.loc[common_indices]
+                        aligned_col2 = col2_data.loc[common_indices]
+                        
+                        if correlation_type == 'pearson':
+                            corr, p_value = stats.pearsonr(aligned_col1, aligned_col2)
+                        elif correlation_type == 'spearman':
+                            corr, p_value = stats.spearmanr(aligned_col1, aligned_col2)
+                        elif correlation_type == 'kendall':
+                            corr, p_value = stats.kendalltau(aligned_col1, aligned_col2)
+                        else:
+                            corr, p_value = stats.pearsonr(aligned_col1, aligned_col2)
+                        
+                        if p_value < significance_level:
+                            significant_correlations.append({
+                                'variable1': col1,
+                                'variable2': col2,
+                                'correlation': corr,
+                                'p_value': p_value,
+                                'significance': 'significant' if p_value < 0.01 else 'moderate'
+                            })
+        
+        return significant_correlations
+    
+    def _find_strong_correlations(self, columns, correlation_type, min_correlation):
+        strong_correlations = []
+        corr_matrix = self.dataset[columns].corr(method=correlation_type)
+        
+        for i in range(len(columns)):
+            for j in range(i+1, len(columns)):
+                corr_value = corr_matrix.iloc[i, j]
+                if abs(corr_value) >= min_correlation:
+                    strong_correlations.append({
+                        'variable1': columns[i],
+                        'variable2': columns[j],
+                        'correlation': corr_value,
+                        'strength': 'strong' if abs(corr_value) >= 0.7 else 'moderate'
+                    })
+        
+        return strong_correlations
+    
+    def _prepare_heatmap_data(self, columns, correlation_type):
+        corr_matrix = self.dataset[columns].corr(method=correlation_type)
+        return {
+            'x_labels': columns.tolist(),
+            'y_labels': columns.tolist(),
+            'values': corr_matrix.values.tolist()
+        }
+    
+    def _perform_correlation_tests(self, columns, correlation_type, significance_level):
+        tests = {}
+        
+        for i, col1 in enumerate(columns):
+            for j, col2 in enumerate(columns):
+                if i < j:
+                    col1_data = self.dataset[col1].dropna()
+                    col2_data = self.dataset[col2].dropna()
+                    
+                    common_indices = col1_data.index.intersection(col2_data.index)
+                    if len(common_indices) > 3:
+                        aligned_col1 = col1_data.loc[common_indices]
+                        aligned_col2 = col2_data.loc[common_indices]
+                        
+                        if correlation_type == 'pearson':
+                            corr, p_value = stats.pearsonr(aligned_col1, aligned_col2)
+                        elif correlation_type == 'spearman':
+                            corr, p_value = stats.spearmanr(aligned_col1, aligned_col2)
+                        elif correlation_type == 'kendall':
+                            corr, p_value = stats.kendalltau(aligned_col1, aligned_col2)
+                        else:
+                            corr, p_value = stats.pearsonr(aligned_col1, aligned_col2)
+                        
+                        test_key = f"{col1}_vs_{col2}"
+                        tests[test_key] = {
+                            'correlation': corr,
+                            'p_value': p_value,
+                            'significant': p_value < significance_level,
+                            'interpretation': self._interpret_correlation(corr, p_value, significance_level)
+                        }
+        
+        return tests
+    
+    def _interpret_correlation(self, corr, p_value, significance_level):
+        if p_value > significance_level:
+            return "No significant correlation"
+        
+        if abs(corr) >= 0.8:
+            strength = "very strong"
+        elif abs(corr) >= 0.6:
+            strength = "strong"
+        elif abs(corr) >= 0.4:
+            strength = "moderate"
+        elif abs(corr) >= 0.2:
+            strength = "weak"
+        else:
+            strength = "very weak"
+        
+        direction = "positive" if corr > 0 else "negative"
+        
+        return f"{strength} {direction} correlation"
+```
+
+STEP 7.2: Regression Tool (ai/analyticabd/tools/regression_tool.py)
+```python
+from .base_tool import BaseTool
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import LinearRegression, Ridge, Lasso
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, mean_squared_error, mean_absolute_error
+from sklearn.preprocessing import StandardScaler
+import statsmodels.api as sm
+
+class RegressionTool(BaseTool):
+    def get_description(self):
+        return "Perform linear regression analysis with multiple algorithms and comprehensive model evaluation"
+    
+    def get_parameters_schema(self):
+        return {
+            "target_variable": {"type": "string", "required": True},
+            "independent_variables": {"type": "list", "required": True},
+            "regression_type": {"type": "string", "default": "linear", "options": ["linear", "ridge", "lasso"]},
+            "test_size": {"type": "float", "default": 0.2},
+            "random_state": {"type": "integer", "default": 42}
+        }
+    
+    def execute(self, parameters=None):
+        cached_results = self.cache_manager.get_cached_tool_results(
+            self.tool_name, self.dataset_id, parameters
+        )
+        if cached_results:
+            return cached_results
+        
+        self.load_dataset()
+        
+        if not parameters:
+            return {'error': 'Parameters required for regression analysis'}
+        
+        target_var = parameters.get('target_variable')
+        independent_vars = parameters.get('independent_variables', [])
+        regression_type = parameters.get('regression_type', 'linear')
+        test_size = parameters.get('test_size', 0.2)
+        random_state = parameters.get('random_state', 42)
+        
+        if target_var not in self.dataset.columns:
+            return {'error': f'Target variable {target_var} not found in dataset'}
+        
+        missing_vars = [var for var in independent_vars if var not in self.dataset.columns]
+        if missing_vars:
+            return {'error': f'Independent variables not found: {missing_vars}'}
+        
+        X = self.dataset[independent_vars].dropna()
+        y = self.dataset[target_var].dropna()
+        
+        common_indices = X.index.intersection(y.index)
+        if len(common_indices) < 10:
+            return {'error': 'Insufficient data for regression analysis'}
+        
+        X = X.loc[common_indices]
+        y = y.loc[common_indices]
+        
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=test_size, random_state=random_state
+        )
+        
+        scaler = StandardScaler()
+        X_train_scaled = scaler.fit_transform(X_train)
+        X_test_scaled = scaler.transform(X_test)
+        
+        models = {}
+        results = {}
+        
+        if regression_type == 'linear':
+            model = LinearRegression()
+            model.fit(X_train_scaled, y_train)
+            models['linear'] = model
+        elif regression_type == 'ridge':
+            model = Ridge(alpha=1.0)
+            model.fit(X_train_scaled, y_train)
+            models['ridge'] = model
+        elif regression_type == 'lasso':
+            model = Lasso(alpha=1.0)
+            model.fit(X_train_scaled, y_train)
+            models['lasso'] = model
+        
+        for name, model in models.items():
+            y_pred_train = model.predict(X_train_scaled)
+            y_pred_test = model.predict(X_test_scaled)
+            
+            results[name] = {
+                'coefficients': dict(zip(independent_vars, model.coef_)),
+                'intercept': model.intercept_,
+                'r2_train': r2_score(y_train, y_pred_train),
+                'r2_test': r2_score(y_test, y_pred_test),
+                'mse_train': mean_squared_error(y_train, y_pred_train),
+                'mse_test': mean_squared_error(y_test, y_pred_test),
+                'mae_train': mean_absolute_error(y_train, y_pred_train),
+                'mae_test': mean_absolute_error(y_test, y_pred_test),
+                'predictions': {
+                    'train': y_pred_train.tolist(),
+                    'test': y_pred_test.tolist()
+                }
+            }
+        
+        X_with_const = sm.add_constant(X_train)
+        model_sm = sm.OLS(y_train, X_with_const).fit()
+        
+        statistical_summary = {
+            'r_squared': model_sm.rsquared,
+            'adj_r_squared': model_sm.rsquared_adj,
+            'f_statistic': model_sm.fvalue,
+            'f_p_value': model_sm.f_pvalue,
+            'aic': model_sm.aic,
+            'bic': model_sm.bic,
+            'coefficients_table': model_sm.summary().tables[1].as_html(),
+            'residuals_analysis': {
+                'mean_residual': model_sm.resid.mean(),
+                'std_residual': model_sm.resid.std(),
+                'skewness': model_sm.resid.skew(),
+                'kurtosis': model_sm.resid.kurtosis()
+            }
+        }
+        
+        final_results = {
+            'model_results': results,
+            'statistical_summary': statistical_summary,
+            'data_info': {
+                'n_samples': len(X),
+                'n_features': len(independent_vars),
+                'target_variable': target_var,
+                'independent_variables': independent_vars,
+                'regression_type': regression_type
+            },
+            'assumptions_check': self._check_regression_assumptions(X_train, y_train, model_sm.resid)
+        }
+        
+        self.cache_manager.cache_tool_results(
+            self.tool_name, self.dataset_id, parameters, final_results
+        )
+        
+        return final_results
+    
+    def _check_regression_assumptions(self, X, y, residuals):
+        from scipy import stats
+        
+        assumptions = {}
+        
+        shapiro_stat, shapiro_p = stats.shapiro(residuals)
+        assumptions['normality'] = {
+            'test': 'Shapiro-Wilk',
+            'statistic': shapiro_stat,
+            'p_value': shapiro_p,
+            'assumption_met': shapiro_p > 0.05
+        }
+        
+        residual_variance = np.var(residuals)
+        assumptions['homoscedasticity'] = {
+            'residual_variance': residual_variance,
+            'assumption_met': True
+        }
+        
+        dw_stat = np.sum(np.diff(residuals) ** 2) / np.sum(residuals ** 2)
+        assumptions['independence'] = {
+            'test': 'Durbin-Watson',
+            'statistic': dw_stat,
+            'assumption_met': 1.5 < dw_stat < 2.5
+        }
+        
+        return assumptions
+```
+
+================================================================================
+PHASE 8: COMPREHENSIVE API ENDPOINTS
+================================================================================
+
+STEP 8.1: API Serializers (ai/analyticabd/api/serializers.py)
+```python
+from rest_framework import serializers
+from ..models import ChatSession, ChatMessage, ToolExecution, UserDataset
+
+class ChatSessionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatSession
+        fields = ['id', 'session_id', 'created_at', 'updated_at', 'is_active']
+
+class ChatMessageSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = ['id', 'role', 'content', 'metadata', 'created_at']
+
+class ToolExecutionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ToolExecution
+        fields = ['id', 'tool_name', 'dataset_id', 'parameters', 'results', 'created_at']
+
+class DatasetSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserDataset
+        fields = ['id', 'name', 'rows', 'columns', 'uploaded_at']
+
+class ChatRequestSerializer(serializers.Serializer):
+    message = serializers.CharField(max_length=1000)
+    session_id = serializers.CharField(required=False)
+    context = serializers.JSONField(required=False)
+
+class ToolExecutionRequestSerializer(serializers.Serializer):
+    tool_name = serializers.CharField(max_length=100)
+    dataset_id = serializers.IntegerField()
+    parameters = serializers.JSONField(required=False)
+
+class InterpretSummaryRequestSerializer(serializers.Serializer):
+    dataset_id = serializers.IntegerField()
+    include_visualizations = serializers.BooleanField(default=True)
+```
+
+STEP 8.2: API ViewSets (ai/analyticabd/api/viewsets.py)
+```python
+from rest_framework import viewsets, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
+from ..models import ChatSession, ChatMessage, ToolExecution
+from .serializers import *
+
+class ChatViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ChatSessionSerializer
+    
+    def get_queryset(self):
+        return ChatSession.objects.filter(user=self.request.user, is_active=True)
+    
+    @action(detail=True, methods=['post'])
+    def send_message(self, request, pk=None):
+        session = self.get_object()
+        serializer = ChatRequestSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            message = serializer.validated_data['message']
+            context = serializer.validated_data.get('context', {})
+            
+            ChatMessage.objects.create(
+                session=session,
+                role='user',
+                content=message,
+                metadata=context
+            )
+            
+            from ..ai.tool_executor import ToolExecutor
+            executor = ToolExecutor()
+            response = executor.process_chat_message(
+                request.user, message, session.id, context
+            )
+            
+            ChatMessage.objects.create(
+                session=session,
+                role='assistant',
+                content=response['response'],
+                metadata=response.get('metadata', {})
+            )
+            
+            return Response(response)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        session = self.get_object()
+        messages = session.messages.all()
+        serializer = ChatMessageSerializer(messages, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def clear(self, request, pk=None):
+        session = self.get_object()
+        session.messages.all().delete()
+        return Response({'status': 'Chat history cleared'})
+
+class ToolExecutionViewSet(viewsets.ModelViewSet):
+    permission_classes = [IsAuthenticated]
+    serializer_class = ToolExecutionSerializer
+    
+    def get_queryset(self):
+        return ToolExecution.objects.filter(session__user=self.request.user)
+    
+    @action(detail=False, methods=['post'])
+    def execute(self, request):
+        serializer = ToolExecutionRequestSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            tool_name = serializer.validated_data['tool_name']
+            dataset_id = serializer.validated_data['dataset_id']
+            parameters = serializer.validated_data.get('parameters', {})
+            
+            from ..ai.tool_executor import ToolExecutor
+            executor = ToolExecutor()
+            results = executor.execute_tool(
+                tool_name, dataset_id, request.user.id, parameters
+            )
+            
+            session = ChatSession.objects.filter(
+                user=request.user, is_active=True
+            ).first()
+            
+            if session:
+                ToolExecution.objects.create(
+                    session=session,
+                    tool_name=tool_name,
+                    dataset_id=dataset_id,
+                    parameters=parameters,
+                    results=results
+                )
+            
+            return Response(results)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def available_tools(self, request):
+        from ..tools.tool_registry import ToolRegistry
+        registry = ToolRegistry()
+        tools = registry.get_tool_descriptions()
+        return Response(tools)
+
+class AnalysisViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+    
+    @action(detail=False, methods=['post'])
+    def interpret_summary(self, request):
+        serializer = InterpretSummaryRequestSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            dataset_id = serializer.validated_data['dataset_id']
+            include_visualizations = serializer.validated_data['include_visualizations']
+            
+            from ..tools.summary_statistics_tool import SummaryStatisticsTool
+            tool = SummaryStatisticsTool(dataset_id, request.user.id)
+            summary_results = tool.execute({
+                'include_visualizations': include_visualizations
+            })
+            
+            from ..ai.llm_client import LLMClient
+            llm_client = LLMClient()
+            interpretation = llm_client.interpret_summary_statistics(
+                dataset_id, summary_results
+            )
+            
+            return Response({
+                'summary_results': summary_results,
+                'interpretation': interpretation
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def datasets(self, request):
+        from ..models import UserDataset
+        datasets = UserDataset.objects.filter(user=request.user, is_active=True)
+        serializer = DatasetSerializer(datasets, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=False, methods=['post'])
+    def async_execute(self, request):
+        serializer = ToolExecutionRequestSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            tool_name = serializer.validated_data['tool_name']
+            dataset_id = serializer.validated_data['dataset_id']
+            parameters = serializer.validated_data.get('parameters', {})
+            
+            from ..ai.async_processor import execute_tool_async
+            task = execute_tool_async.delay(
+                tool_name, dataset_id, request.user.id, parameters
+            )
+            
+            return Response({
+                'task_id': task.id,
+                'status': 'processing'
+            })
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=['get'])
+    def task_status(self, request):
+        task_id = request.query_params.get('task_id')
+        if not task_id:
+            return Response({'error': 'task_id required'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        from celery.result import AsyncResult
+        task_result = AsyncResult(task_id)
+        
+        return Response({
+            'task_id': task_id,
+            'status': task_result.status,
+            'result': task_result.result if task_result.ready() else None
+        })
+```
+
+STEP 8.3: API Routers (ai/analyticabd/api/routers.py)
+```python
+from rest_framework.routers import DefaultRouter
+from .viewsets import ChatViewSet, ToolExecutionViewSet, AnalysisViewSet
+
+router = DefaultRouter()
+router.register(r'chat', ChatViewSet, basename='chat')
+router.register(r'tools', ToolExecutionViewSet, basename='tools')
+router.register(r'analysis', AnalysisViewSet, basename='analysis')
+
+urlpatterns = router.urls
+```
+
+STEP 8.4: URL Configuration (ai/analyticabd/urls.py)
+Add the new API URLs:
+```python
+from django.urls import path, include
+from . import views
+from .api.routers import router
+
+urlpatterns = [
+    # Existing URLs...
+    path('', views.home, name='homepage'),
+    path('account/', views.account_management, name='account_management'),
+    path('dashboard/', views.analytics, name='analytics_dashboard'),
+    path('getting-started/', views.getting_started, name='getting_started'),
+    path('pricing/', views.pricing_plans, name='pricing_plans'),
+    
+    # Authentication URLs
+    path('signup/', views.signup, name='signup'),
+    path('signin/', views.signin, name='signin'),
+    path('signout/', views.signout, name='signout'),
+    path('profile/', views.profile, name='profile'),
+    
+    # Existing API endpoints
+    path('api/upload-dataset/', views.upload_dataset, name='upload_dataset'),
+    path('api/datasets/', views.get_user_datasets, name='get_user_datasets'),
+    path('api/summary-statistics/<int:dataset_id>/', views.get_summary_statistics, name='get_summary_statistics'),
+    path('api/user-state/', views.get_user_state, name='get_user_state'),
+    path('api/set-current-dataset/', views.set_current_dataset, name='set_current_dataset'),
+    path('api/record-interaction/', views.record_interaction, name='record_interaction'),
+    path('api/analysis-history/<int:dataset_id>/', views.get_analysis_history, name='get_analysis_history'),
+    path('api/delete-dataset/', views.delete_dataset, name='delete_dataset'),
+    path('api/warning-preferences/', views.get_warning_preferences, name='get_warning_preferences'),
+    path('api/update-warning-preferences/', views.update_warning_preferences, name='update_warning_preferences'),
+    
+    # New comprehensive API endpoints
+    path('api/v1/', include(router.urls)),
+]
+```
+
+================================================================================
+PHASE 9: FRONTEND INTEGRATION
+================================================================================
+
+STEP 9.1: Add AI Chat Interface to analytics_dashboard.html
+Add this section to the chat area:
+```html
+<!-- AI Chat Interface -->
+<div class="bg-white rounded-lg shadow-md p-4 mb-4">
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-800">AI Analytics Assistant</h3>
+        <button onclick="clearChatHistory()" class="text-sm text-gray-500 hover:text-gray-700">
+            Clear Chat
+        </button>
+    </div>
+    
+    <div id="chat-messages" class="space-y-3 max-h-64 overflow-y-auto mb-4">
+        <!-- Chat messages will be populated here -->
+    </div>
+    
+    <div class="flex space-x-2">
+        <input type="text" id="chat-input" placeholder="Ask about your data..." 
+               class="flex-1 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button onclick="sendChatMessage()" 
+                class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            Send
+        </button>
+    </div>
+</div>
+
+<!-- Interpret Summary Button -->
+<div class="bg-white rounded-lg shadow-md p-4 mb-4">
+    <h3 class="text-lg font-semibold text-gray-800 mb-4">AI Interpretation</h3>
+    <button onclick="interpretSummaryWithAI()" 
+            class="w-full px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+        Interpret Summary Statistics with AI
+    </button>
+</div>
+```
+
+STEP 9.2: Add JavaScript Functions for AI Integration
+Add these functions to the existing JavaScript:
+```javascript
+// AI Chat Functions
+let currentChatSession = null;
+
+async function sendChatMessage() {
+    const input = document.getElementById('chat-input');
+    const message = input.value.trim();
+    
+    if (!message) return;
+    
+    // Add user message to chat
+    addChatMessage('user', message);
+    input.value = '';
+    
+    try {
+        const response = await fetch('/api/v1/chat/send_message/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                message: message,
+                session_id: currentChatSession
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            addChatMessage('assistant', data.response);
+        } else {
+            addChatMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+        }
+    } catch (error) {
+        console.error('Error sending chat message:', error);
+        addChatMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+    }
+}
+
+function addChatMessage(role, content) {
+    const chatMessages = document.getElementById('chat-messages');
+    const messageDiv = document.createElement('div');
+    messageDiv.className = `p-3 rounded-lg ${role === 'user' ? 'bg-blue-100 ml-8' : 'bg-gray-100 mr-8'}`;
+    messageDiv.innerHTML = `<strong>${role === 'user' ? 'You' : 'AI'}:</strong> ${content}`;
+    chatMessages.appendChild(messageDiv);
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+async function interpretSummaryWithAI() {
+    if (datasets.length === 0 || currentDatasetIndex === -1) {
+        alert('Please select a dataset first.');
+        return;
+    }
+    
+    const datasetId = datasets[currentDatasetIndex].id;
+    
+    try {
+        const response = await fetch('/api/v1/analysis/interpret_summary/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                dataset_id: datasetId,
+                include_visualizations: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            addChatMessage('assistant', data.interpretation);
+        } else {
+            addChatMessage('assistant', 'Sorry, I encountered an error interpreting the summary.');
+        }
+    } catch (error) {
+        console.error('Error interpreting summary:', error);
+        addChatMessage('assistant', 'Sorry, I encountered an error interpreting the summary.');
+    }
+}
+
+async function clearChatHistory() {
+    if (currentChatSession) {
+        try {
+            await fetch(`/api/v1/chat/${currentChatSession}/clear/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': getCookie('csrftoken')
+                }
+            });
+        } catch (error) {
+            console.error('Error clearing chat history:', error);
+        }
+    }
+    
+    document.getElementById('chat-messages').innerHTML = '';
+}
+
+// Initialize chat session on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize chat session
+    initializeChatSession();
+});
+
+async function initializeChatSession() {
+    try {
+        const response = await fetch('/api/v1/chat/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({})
+        });
+        
+        const data = await response.json();
+        if (response.ok) {
+            currentChatSession = data.id;
+            loadChatHistory();
+        }
+    } catch (error) {
+        console.error('Error initializing chat session:', error);
+    }
+}
+
+async function loadChatHistory() {
+    if (!currentChatSession) return;
+    
+    try {
+        const response = await fetch(`/api/v1/chat/${currentChatSession}/messages/`);
+        const messages = await response.json();
+        
+        const chatMessages = document.getElementById('chat-messages');
+        chatMessages.innerHTML = '';
+        
+        messages.forEach(message => {
+            addChatMessage(message.role, message.content);
+        });
+    } catch (error) {
+        console.error('Error loading chat history:', error);
+    }
+}
+
+// Add event listener for Enter key in chat input
+document.addEventListener('DOMContentLoaded', function() {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendChatMessage();
+            }
+        });
+    }
+});
+```
+
+================================================================================
+PHASE 10: TESTING AND DEPLOYMENT
+================================================================================
+
+STEP 10.1: Testing Strategy
+```python
+# tests/test_ai_integration.py
+from django.test import TestCase
+from django.contrib.auth.models import User
+from ..ai.llm_client import LLMClient
+from ..tools.summary_statistics_tool import SummaryStatisticsTool
+from ..models import UserDataset
+
+class AIIntegrationTest(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username='testuser', password='testpass')
+        self.client.login(username='testuser', password='testpass')
+    
+    def test_summary_statistics_tool(self):
+        # Test summary statistics tool
+        tool = SummaryStatisticsTool(dataset_id=1, user_id=self.user.id)
+        results = tool.execute()
+        self.assertIn('dataset_overview', results)
+        self.assertIn('variable_summary', results)
+    
+    def test_llm_client(self):
+        # Test LLM client
+        llm_client = LLMClient()
+        response = llm_client.chat("Hello, how can you help me analyze data?")
+        self.assertIsInstance(response, str)
+        self.assertGreater(len(response), 0)
+    
+    def test_cache_manager(self):
+        # Test cache manager
+        from ..ai.cache_manager import CacheManager
+        cache_manager = CacheManager()
+        
+        test_data = {'test': 'data'}
+        cache_key = cache_manager.generate_cache_key('test', test_data)
+        
+        cache_manager.set_cached_response(cache_key, test_data)
+        cached_data = cache_manager.get_cached_response(cache_key)
+        
+        self.assertEqual(cached_data, test_data)
+```
+
+STEP 10.2: Deployment Checklist
+```
+1. Environment Setup:
+   - Install Redis server
+   - Configure environment variables
+   - Install additional dependencies
+
+2. Database Migrations:
+   - Run makemigrations for new models
+   - Run migrate to apply migrations
+
+3. Static Files:
+   - Collect static files: python manage.py collectstatic
+   - Configure static file serving
+
+4. Celery Setup:
+   - Install and configure Celery
+   - Set up Celery worker processes
+   - Configure Redis as Celery broker
+
+5. Testing:
+   - Run unit tests: python manage.py test
+   - Test AI integration
+   - Test caching functionality
+
+6. Production Configuration:
+   - Set DEBUG=False
+   - Configure production database
+   - Set up proper logging
+   - Configure security settings
+```
+
+================================================================================
+PHASE 11: FUTURE ENHANCEMENTS
+================================================================================
+
+STEP 11.1: n8n Integration
+```python
+# api/n8n_integration.py
+class N8NIntegration:
+    def __init__(self):
+        self.webhook_url = os.getenv('N8N_WEBHOOK_URL')
+    
+    def send_analysis_request(self, user_id, dataset_id, analysis_type):
+        """Send analysis request to n8n workflow"""
+        payload = {
+            'user_id': user_id,
+            'dataset_id': dataset_id,
+            'analysis_type': analysis_type,
+            'timestamp': time.time()
+        }
+        
+        response = requests.post(self.webhook_url, json=payload)
+        return response.json()
+    
+    def receive_analysis_results(self, results):
+        """Receive analysis results from n8n"""
+        # Process results and update database
+        pass
+```
+
+STEP 11.2: Messaging App Integration
+```python
+# api/messaging_integration.py
+class MessagingIntegration:
+    def __init__(self):
+        self.telegram_token = os.getenv('TELEGRAM_BOT_TOKEN')
+        self.whatsapp_token = os.getenv('WHATSAPP_TOKEN')
+    
+    def handle_telegram_message(self, message):
+        """Handle incoming Telegram messages"""
+        user_id = message['from']['id']
+        text = message['text']
+        
+        # Process message and return response
+        response = self.process_message(user_id, text)
+        return response
+    
+    def handle_whatsapp_message(self, message):
+        """Handle incoming WhatsApp messages"""
+        user_id = message['from']
+        text = message['text']['body']
+        
+        # Process message and return response
+        response = self.process_message(user_id, text)
+        return response
+    
+    def process_message(self, user_id, text):
+        """Process message and generate response"""
+        # Implement message processing logic
+        pass
+```
+
+================================================================================
+IMPLEMENTATION ORDER
+================================================================================
+
+1. Environment Setup (Phase 1)
+2. Project Structure (Phase 2)
+3. Caching Infrastructure (Phase 3)
+4. Core Tools (Phase 4)
+5. LLM Client (Phase 5)
+6. Database Models (Phase 6)
+7. Remaining Tools (Phase 7)
+8. API Endpoints (Phase 8)
+9. Frontend Integration (Phase 9)
+10. Testing (Phase 10)
+11. Future Enhancements (Phase 11)
+
+================================================================================
+CONCLUSION
+================================================================================
+
+This comprehensive plan provides:
+- Robust caching infrastructure for performance
+- Comprehensive tool framework for data analysis
+- AI-powered chat interface with LangChain
+- Scalable API architecture
+- Frontend integration with existing UI
+- Testing and deployment strategies
+- Future enhancement roadmap
+
+The system supports both expert users (direct tool access) and non-expert users (LLM guidance), with clear pathways for n8n and messaging app integration.
