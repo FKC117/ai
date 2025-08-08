@@ -476,6 +476,8 @@ def get_user_state(request):
         return JsonResponse({
             'datasets': dataset_list,
             'current_dataset_index': current_dataset_index,
+            'current_session_id': user_pref.current_session.id if user_pref.current_session else None,
+            'ui_state': user_pref.ui_state,
             'default_analysis_type': user_pref.default_analysis_type,
             'recent_sessions': session_list
         })
@@ -496,7 +498,6 @@ def set_current_dataset(request):
         # Update user preferences
         user_pref, created = UserPreference.objects.get_or_create(user=request.user)
         user_pref.current_dataset = dataset
-        user_pref.save()
         
         # Create or update analysis session
         session, created = AnalysisSession.objects.get_or_create(
@@ -509,6 +510,10 @@ def set_current_dataset(request):
         if not created:
             session.updated_at = datetime.now()
             session.save()
+        
+        # Store current session in user preferences
+        user_pref.current_session = session
+        user_pref.save()
         
         return JsonResponse({
             'success': True,
@@ -660,6 +665,26 @@ def get_warning_preferences(request):
         
     except Exception as e:
         return JsonResponse({'error': f'Error getting preferences: {str(e)}'}, status=500)
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def save_ui_state(request):
+    """Save UI state to database"""
+    try:
+        ui_state = json.loads(request.POST.get('ui_state', '{}'))
+        
+        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
+        user_pref.ui_state = ui_state
+        user_pref.save()
+        
+        return JsonResponse({
+            'success': True,
+            'message': 'UI state saved successfully'
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': f'Error saving UI state: {str(e)}'}, status=500)
 
 @login_required
 @csrf_exempt

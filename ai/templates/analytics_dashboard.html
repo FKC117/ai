@@ -1164,8 +1164,96 @@
             let datasets = [];
             let currentDatasetIndex = -1; // Start with no dataset selected
             
-            // Load user state and initialize
+            // State persistence functions
+            function saveStateToStorage() {
+                const state = {
+                    currentDatasetId: window.currentDatasetId,
+                    currentDatasetName: window.currentDatasetName,
+                    currentSessionId: window.currentSessionId,
+                    currentDatasetIndex: currentDatasetIndex,
+                    lastUpdated: new Date().toISOString()
+                };
+                // Use user-specific key to prevent cross-user data leakage
+                const userKey = `dataflow_analytics_state_${window.currentUserId || 'anonymous'}`;
+                localStorage.setItem(userKey, JSON.stringify(state));
+                console.log('State saved to localStorage:', state);
+                
+                // Also save UI state to database
+                saveUIStateToDatabase(state);
+            }
+            
+            // New function to save UI state to database
+            function saveUIStateToDatabase(state) {
+                const formData = new FormData();
+                formData.append('ui_state', JSON.stringify(state));
+                
+                fetch('{% url "save_ui_state" %}', {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+                    }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        console.log('UI state saved to database:', state);
+                    } else {
+                        console.error('Error saving UI state to database:', data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error saving UI state to database:', error);
+                });
+            }
+            
+            function loadStateFromStorage() {
+                try {
+                    // Use user-specific key to prevent cross-user data leakage
+                    const userKey = `dataflow_analytics_state_${window.currentUserId || 'anonymous'}`;
+                    const savedState = localStorage.getItem(userKey);
+                    if (savedState) {
+                        const state = JSON.parse(savedState);
+                        
+                        // Check if the saved state is not too old (24 hours)
+                        const lastUpdated = new Date(state.lastUpdated);
+                        const now = new Date();
+                        const hoursDiff = (now - lastUpdated) / (1000 * 60 * 60);
+                        
+                        if (hoursDiff < 24) {
+                            window.currentDatasetId = state.currentDatasetId;
+                            window.currentDatasetName = state.currentDatasetName;
+                            window.currentSessionId = state.currentSessionId;
+                            currentDatasetIndex = state.currentDatasetIndex;
+                            console.log('State restored from localStorage:', state);
+                            return true;
+                        } else {
+                            console.log('Saved state is too old, clearing localStorage');
+                            localStorage.removeItem(userKey);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error loading state from localStorage:', error);
+                    const userKey = `dataflow_analytics_state_${window.currentUserId || 'anonymous'}`;
+                    localStorage.removeItem(userKey);
+                }
+                return false;
+            }
+            
+            function clearStateFromStorage() {
+                // Clear state for all potential user keys
+                const userKey = `dataflow_analytics_state_${window.currentUserId || 'anonymous'}`;
+                localStorage.removeItem(userKey);
+                // Also clear the old generic key for backward compatibility
+                localStorage.removeItem('dataflow_analytics_state');
+                console.log('State cleared from localStorage');
+            }
+            
+            // Enhanced loadUserState function with state persistence
             function loadUserState() {
+                // First try to load from localStorage
+                const stateRestored = loadStateFromStorage();
+                
                 fetch('{% url "get_user_state" %}')
                     .then(response => response.json())
                     .then(data => {
@@ -1177,7 +1265,43 @@
                         
                         // Load datasets
                         datasets = data.datasets || [];
-                        currentDatasetIndex = data.current_dataset_index || -1;
+                        
+                        // Use database session ID if available, otherwise fall back to localStorage
+                        if (data.current_session_id) {
+                            window.currentSessionId = data.current_session_id;
+                            console.log('Using database session ID:', window.currentSessionId);
+                        }
+                        
+                        // If we restored state from localStorage, use it
+                        if (stateRestored && window.currentDatasetId) {
+                            // Verify the dataset still exists
+                            const datasetExists = datasets.find(d => d.id === window.currentDatasetId);
+                            if (datasetExists) {
+                                currentDatasetIndex = datasets.indexOf(datasetExists);
+                                console.log('Using restored state with dataset:', window.currentDatasetId);
+                            } else {
+                                // Dataset no longer exists, use backend state
+                                currentDatasetIndex = data.current_dataset_index || -1;
+                                if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
+                                    window.currentDatasetId = datasets[currentDatasetIndex].id;
+                                    window.currentDatasetName = datasets[currentDatasetIndex].name;
+                                }
+                                console.log('Dataset no longer exists, using backend state');
+                            }
+                        } else {
+                            // Use backend state
+                            currentDatasetIndex = data.current_dataset_index || -1;
+                            if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
+                                window.currentDatasetId = datasets[currentDatasetIndex].id;
+                                window.currentDatasetName = datasets[currentDatasetIndex].name;
+                            }
+                        }
+                        
+                        // Apply UI state from database if available
+                        if (data.ui_state && Object.keys(data.ui_state).length > 0) {
+                            console.log('Applying UI state from database:', data.ui_state);
+                            // You can add more UI state restoration here as needed
+                        }
                         
                         // Update displays
                         updateCurrentDatasetDisplay();
@@ -1194,13 +1318,16 @@
                         
                         // Load chat history for current dataset if available
                         if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
-                            window.currentDatasetId = datasets[currentDatasetIndex].id;
                             loadChatHistory();
                         }
                         
+                        // Save state to localStorage
+                        saveStateToStorage();
+                        
                         console.log('User state loaded:', {
                             datasets: datasets.length,
-                            currentIndex: currentDatasetIndex
+                            currentIndex: currentDatasetIndex,
+                            currentDatasetId: window.currentDatasetId
                         });
                     })
                     .catch(error => {
@@ -1209,7 +1336,7 @@
                     });
             }
             
-            // Function to save current dataset selection
+            // Enhanced saveCurrentDataset function with state persistence
             function saveCurrentDataset(datasetId) {
                 const formData = new FormData();
                 formData.append('dataset_id', datasetId);
@@ -1227,12 +1354,18 @@
                         console.log('Current dataset saved:', data.message);
                         // Capture active session id for reporting/AI context
                         if (data.session_id) {
-                            currentSessionId = data.session_id;
+                            window.currentSessionId = data.session_id;
                         }
                         // Ensure local dataset id/name are set
-                        currentDatasetId = datasetId;
+                        window.currentDatasetId = datasetId;
                         const ds = datasets.find(d => d.id === datasetId);
-                        if (ds) { currentDatasetName = ds.name; }
+                        if (ds) { 
+                            window.currentDatasetName = ds.name;
+                            currentDatasetIndex = datasets.indexOf(ds);
+                        }
+                        
+                        // Save state to localStorage
+                        saveStateToStorage();
                     } else {
                         console.error('Error saving current dataset:', data.error);
                     }
@@ -1930,6 +2063,13 @@
                             // Update current dataset index if needed
                             if (currentDatasetIndex === index) {
                                 currentDatasetIndex = datasets.length > 0 ? 0 : -1;
+                                // Clear state if we deleted the current dataset
+                                if (window.currentDatasetId === datasetId) {
+                                    clearStateFromStorage();
+                                    window.currentDatasetId = null;
+                                    window.currentDatasetName = null;
+                                    window.currentSessionId = null;
+                                }
                             } else if (currentDatasetIndex > index) {
                                 currentDatasetIndex--;
                             }
@@ -2532,6 +2672,7 @@
             window.currentAnalysisType = null;
             window.conversationHistory = [];
             window.userInitials = '{{ user.first_name|first }}{{ user.last_name|first }}' || 'U';
+            window.currentUserId = '{{ user.id }}' || 'anonymous';
             
             // Initialize chat session
             function initializeChatSession() {
@@ -2618,6 +2759,9 @@
                             window.currentSessionId = data.session_id;
                             console.log('Updated session ID to:', window.currentSessionId);
                         }
+                        
+                        // Save state to localStorage after successful message
+                        saveStateToStorage();
                         
                         console.log('=== AI CHAT DEBUG SUCCESS ===');
                     } else {
@@ -2999,6 +3143,9 @@
                     
                     // Load chat history for this dataset
                     loadChatHistory();
+                    
+                    // Save state to localStorage
+                    saveStateToStorage();
                 }
             }
 
@@ -3006,8 +3153,38 @@
             loadUserState();
             loadWarningPreferences();
             
+            // Add event listener for page unload to save state
+            window.addEventListener('beforeunload', function() {
+                saveStateToStorage();
+            });
+            
+            // Add event listener for page visibility change to save state
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'hidden') {
+                    saveStateToStorage();
+                }
+            });
+            
+            // Add event listener for browser navigation to restore state
+            window.addEventListener('popstate', function() {
+                // Restore state when navigating back/forward
+                const stateRestored = loadStateFromStorage();
+                if (stateRestored) {
+                    // Reload user state to ensure consistency
+                    loadUserState();
+                }
+            });
+            
             // Add event listener for multiselect toggle
             document.getElementById('multiselect-toggle').addEventListener('click', toggleMultiselectMode);
+            
+            // Add logout handler to clear state
+            const logoutLinks = document.querySelectorAll('a[href*="signout"], a[href*="logout"]');
+            logoutLinks.forEach(link => {
+                link.addEventListener('click', function() {
+                    clearStateFromStorage();
+                });
+            });
 
             // Pass data to AI
             passDataButton.addEventListener('click', function() {
