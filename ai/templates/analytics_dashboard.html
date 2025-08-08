@@ -3295,6 +3295,46 @@
                 const formattedContent = formatAIResponse(content);
                 messageContent.innerHTML = formattedContent;
                 
+                // Extract tables and images for report inclusion
+                let reportData = {
+                    content: content,
+                    tables: [],
+                    images: []
+                };
+                
+                // Extract tables from the formatted content
+                const tableElements = messageContent.querySelectorAll('table');
+                tableElements.forEach((table, index) => {
+                    const tableData = {
+                        id: `table_${Date.now()}_${index}`,
+                        html: table.outerHTML,
+                        text: table.textContent.trim()
+                    };
+                    reportData.tables.push(tableData);
+                    console.log(`📊 Extracted table ${index + 1}:`, tableData);
+                });
+                
+                // Extract images (if any are added in the future)
+                const imageElements = messageContent.querySelectorAll('img');
+                imageElements.forEach((img, index) => {
+                    const imageData = {
+                        id: `image_${Date.now()}_${index}`,
+                        src: img.src,
+                        alt: img.alt,
+                        width: img.width,
+                        height: img.height
+                    };
+                    reportData.images.push(imageData);
+                    console.log(`🖼️ Extracted image ${index + 1}:`, imageData);
+                });
+                
+                // Store report data for later use
+                if (messageId) {
+                    window.reportData = window.reportData || {};
+                    window.reportData[messageId] = reportData;
+                    console.log(`💾 Stored report data for message ${messageId}:`, reportData);
+                }
+                
                 // Add "Add to report" button if not already added
                 if (!isAddedToReport) {
                     const buttonDiv = document.createElement('div');
@@ -3322,13 +3362,18 @@
                             }
                             
                             try {
+                                // Get the stored report data
+                                const storedData = window.reportData?.[messageId] || { content: content, tables: [], images: [] };
+                                console.log('📋 Using stored report data:', storedData);
+                                
                                 const payload = {
                                     dataset_id: window.currentDatasetId,
                                     session_id: window.currentSessionId,
                                     title: 'AI Analysis',
                                     content: content,
                                     section_type: 'ai_response',
-                                    message_id: messageId
+                                    message_id: messageId,
+                                    report_data: storedData  // Include tables and images
                                 };
                                 
                                 console.log('Adding to report with payload:', payload);

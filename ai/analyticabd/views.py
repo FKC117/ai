@@ -1064,40 +1064,51 @@ def get_summary_statistics_data(dataset_id):
 @csrf_exempt
 @require_http_methods(["POST"])
 def add_to_report(request):
-    """Append the latest AI response or summary block to the user's report for current session/dataset"""
+    """Add content to the user's report document"""
+    print("=== ADD TO REPORT DEBUG START ===")
     try:
-        if not DOCX_AVAILABLE:
-            return JsonResponse({'error': 'python-docx is not installed on the server'}, status=500)
-
         data = json.loads(request.body)
         dataset_id = data.get('dataset_id')
         session_id = data.get('session_id')
         title = data.get('title', 'Analysis Section')
         content = data.get('content', '')
-        section_type = data.get('section_type', 'ai_response')
+        section_type = data.get('section_type', 'general')
         metadata = data.get('metadata', {})
-
-        print(f"DEBUG: add_to_report called with dataset_id={dataset_id}, session_id={session_id}, section_type={section_type}")
-
-        if not dataset_id or not session_id:
-            return JsonResponse({'error': 'dataset_id and session_id are required'}, status=400)
-
+        message_id = data.get('message_id')
+        report_data = data.get('report_data', {})  # New: tables and images data
+        
+        print(f"Received add_to_report request:")
+        print(f"- Dataset ID: {dataset_id}")
+        print(f"- Session ID: {session_id}")
+        print(f"- Title: {title}")
+        print(f"- Section Type: {section_type}")
+        print(f"- Message ID: {message_id}")
+        print(f"- Report Data: {report_data}")
+        
+        if not dataset_id:
+            print("❌ Missing dataset_id")
+            return JsonResponse({'error': 'Dataset ID is required'}, status=400)
+        
         dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        print(f"✅ Dataset found: {dataset.name}")
+        
         # Resolve session: accept numeric ID or fallback to active session
         resolved_session = None
         try:
             resolved_session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
-            print(f"DEBUG: Found session with ID {session_id}")
+            print(f"✅ Found session with ID {session_id}")
         except Exception as e:
-            print(f"DEBUG: Session not found with ID {session_id}, error: {str(e)}")
+            print(f"⚠️ Session not found with ID {session_id}, error: {str(e)}")
             # Fallback to active/latest session for this user+dataset
             resolved_session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).order_by('-updated_at').first()
             if not resolved_session:
                 resolved_session = AnalysisSession.objects.create(user=request.user, dataset=dataset, session_name=f"Analysis of {dataset.name}")
-                print(f"DEBUG: Created new session with ID {resolved_session.id}")
+                print(f"✅ Created new session with ID {resolved_session.id}")
+            else:
+                print(f"✅ Using fallback session with ID {resolved_session.id}")
 
         document, _ = ReportDocument.objects.get_or_create(user=request.user, dataset=dataset, session=resolved_session)
-        print(f"DEBUG: Using document {document.id}")
+        print(f"✅ Using document {document.id}")
 
         # Determine order
         last_section = document.sections.order_by('-order').first()
@@ -1108,14 +1119,10 @@ def add_to_report(request):
             try:
                 stats = get_summary_statistics_data(dataset.id)
                 ov = stats.get('dataset_overview', {})
-                # Build comprehensive summary with all sections
                 content_parts = []
-                
-                # 1. Dataset Overview
                 content_parts.append(f"## Dataset Overview\n")
                 content_parts.append(f"Total Rows: {ov.get('total_rows', 'N/A')} | Total Columns: {ov.get('total_columns', 'N/A')}\n")
                 
-                # 2. Data Quality Report
                 dq = stats.get('data_quality', {})
                 if dq:
                     content_parts.append(f"## Data Quality Report\n")
@@ -1125,7 +1132,6 @@ def add_to_report(request):
                         quality_score = var_stats.get('quality_score', 0)
                         content_parts.append(f"- **{var_name}**: Missing {missing_pct:.1%}, Completeness {completeness:.1%}, Quality Score {quality_score:.1f}\n")
                 
-                # 3. Distribution Insights
                 di = stats.get('distribution_insights', {})
                 if di:
                     content_parts.append(f"## Distribution Insights\n")
@@ -1134,17 +1140,14 @@ def add_to_report(request):
                     content_parts.append(f"- High Variance: {di.get('high_variance', 0)}\n")
                     content_parts.append(f"- Zero Variance: {di.get('zero_variance', 0)}\n")
                 
-                # 4. Variable Summary Table (all variables, properly formatted)
                 content_parts.append(f"## Variable Summary Table\n")
                 var_items = list(stats.get('variable_summary', {}).items())
                 if var_items:
-                    # Header row
                     table_rows = ['| Variable | Type | Count | Mean | Std | Min | 25% | Median | 75% | Max |']
                     table_rows.append('|---------|------|-------|------|-----|-----|-----|--------|-----|-----|')
                     
                     for name, meta in var_items:
                         if meta.get('type') == 'numeric':
-                            # Format numeric values, handle None/N/A
                             mean_val = meta.get('mean', 'N/A')
                             std_val = meta.get('std', 'N/A')
                             min_val = meta.get('min', 'N/A')
@@ -1153,7 +1156,6 @@ def add_to_report(request):
                             q75_val = meta.get('q75', 'N/A')
                             max_val = meta.get('max', 'N/A')
                             
-                            # Format numbers if they exist
                             if isinstance(mean_val, (int, float)): mean_val = f"{mean_val:.2f}"
                             if isinstance(std_val, (int, float)): std_val = f"{std_val:.2f}"
                             if isinstance(min_val, (int, float)): min_val = f"{min_val:.2f}"
@@ -1164,7 +1166,6 @@ def add_to_report(request):
                             
                             row = f"| {name} | numeric | {meta.get('count', 'N/A')} | {mean_val} | {std_val} | {min_val} | {q25_val} | {median_val} | {q75_val} | {max_val} |"
                         else:
-                            # Categorical variables
                             unique_count = meta.get('unique_count', 'N/A')
                             most_common = meta.get('most_common', 'N/A')
                             most_common_count = meta.get('most_common_count', 'N/A')
@@ -1173,21 +1174,23 @@ def add_to_report(request):
                     
                     content_parts.append('\n'.join(table_rows))
                 
-                # 5. Correlation Matrix (if available)
                 corr = stats.get('correlation_matrix', {})
                 if corr and corr.get('strong_correlations'):
                     content_parts.append(f"\n## Strong Correlations\n")
                     for corr_item in corr['strong_correlations']:
                         content_parts.append(f"- **{corr_item['variable1']}** ↔ **{corr_item['variable2']}**: {corr_item['correlation']:.3f}\n")
                 
-                content = (
-                    '\n\n'.join(content_parts)
-                )
-            except Exception:
-                # Fallback to minimal message
+                content = ('\n\n'.join(content_parts))
+                print("✅ Generated summary statistics content")
+            except Exception as e:
+                print(f"❌ Error generating summary content: {e}")
                 content = 'Summary statistics added.'
 
-        # Create the report section
+        # Store report data (tables and images) in metadata
+        if report_data:
+            metadata['report_data'] = report_data
+            print(f"📊 Stored {len(report_data.get('tables', []))} tables and {len(report_data.get('images', []))} images in metadata")
+
         report_section = ReportSection.objects.create(
             document=document,
             order=next_order,
@@ -1196,8 +1199,8 @@ def add_to_report(request):
             section_type=section_type,
             metadata=metadata
         )
+        print(f"✅ Created report section {report_section.id} with order {next_order}")
 
-        # If this is an AI response being added, link it to the chat message
         if section_type == 'ai_response' and data.get('message_id'):
             try:
                 message_id = data.get('message_id')
@@ -1205,16 +1208,23 @@ def add_to_report(request):
                 chat_message.is_added_to_report = True
                 chat_message.report_section = report_section
                 chat_message.save()
+                print(f"✅ Linked chat message {message_id} to report section {report_section.id}")
             except ChatMessage.DoesNotExist:
-                pass  # Ignore if message not found
+                print(f"⚠️ Chat message {message_id} not found")
 
+        print("=== ADD TO REPORT DEBUG SUCCESS ===")
         return JsonResponse({'success': True, 'message': 'Added to report', 'section_order': next_order})
 
     except UserDataset.DoesNotExist:
+        print("❌ Dataset not found")
+        print("=== ADD TO REPORT DEBUG ERROR ===")
         return JsonResponse({'error': 'Dataset not found'}, status=404)
-    except AnalysisSession.DoesNotExist:
-        return JsonResponse({'error': 'Session not found'}, status=404)
     except Exception as e:
+        print(f"❌ Unexpected error: {e}")
+        print(f"Error type: {type(e).__name__}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        print("=== ADD TO REPORT DEBUG ERROR ===")
         return JsonResponse({'error': f'Error adding to report: {str(e)}'}, status=500)
 
 
@@ -1332,12 +1342,89 @@ def download_report(request):
                 run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
 
             content = section.content or ''
-
-            # Enhanced table parsing from markdown with DataFlow styling
+            
+            # Check if section has report data (tables/images from AI responses)
+            report_data = section.metadata.get('report_data', {}) if section.metadata else {}
+            tables_data = report_data.get('tables', [])
+            images_data = report_data.get('images', [])
+            
+            print(f"📄 Processing section '{section.title}' with {len(tables_data)} tables and {len(images_data)} images")
+            
+            # Process tables from AI responses first
+            for i, table_data in enumerate(tables_data):
+                try:
+                    print(f"📊 Adding table {i+1} from AI response")
+                    # Parse the HTML table and add it to the document
+                    from bs4 import BeautifulSoup
+                    soup = BeautifulSoup(table_data['html'], 'html.parser')
+                    table = soup.find('table')
+                    
+                    if table:
+                        # Create a new table in the document
+                        rows = table.find_all('tr')
+                        if rows:
+                            doc_table = doc.add_table(rows=len(rows), cols=len(rows[0].find_all(['td', 'th'])))
+                            doc_table.style = 'Table Grid'
+                            
+                            for r_idx, row in enumerate(rows):
+                                cells = row.find_all(['td', 'th'])
+                                for c_idx, cell in enumerate(cells):
+                                    if c_idx < len(doc_table.rows[r_idx].cells):
+                                        doc_cell = doc_table.rows[r_idx].cells[c_idx]
+                                        doc_cell.text = cell.get_text(strip=True)
+                                        
+                                        # Style the cell
+                                        for paragraph in doc_cell.paragraphs:
+                                            for run in paragraph.runs:
+                                                run.font.name = 'Inter'
+                                                run.font.size = Pt(10)
+                                                if r_idx == 0:  # Header row
+                                                    run.font.bold = True
+                                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White text
+                                                    doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                    doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                                else:
+                                                    run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                                    if r_idx % 2 == 1:  # Alternating rows
+                                                        doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                                
+                                # Auto-fit column widths
+                                for column in doc_table.columns:
+                                    column.width = Inches(1.5)
+                                
+                                doc.add_paragraph('')  # Add space after table
+                                print(f"✅ Added table {i+1} successfully")
+                        else:
+                            print(f"⚠️ No rows found in table HTML for table {i+1}")
+                    else:
+                        print(f"⚠️ No table tag found in HTML for table {i+1}")
+                except Exception as e:
+                    print(f"❌ Error adding table {i+1}: {e}")
+            
+            # Process images from AI responses
+            for i, image_data in enumerate(images_data):
+                try:
+                    print(f"🖼️ Adding image {i+1} from AI response")
+                    # For now, we'll add a placeholder for images
+                    # In the future, you can implement actual image handling
+                    img_paragraph = doc.add_paragraph(f"[Image: {image_data.get('alt', 'AI Generated Chart')}]")
+                    img_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                    for run in img_paragraph.runs:
+                        run.font.name = 'Inter'
+                        run.font.size = Pt(12)
+                        run.font.italic = True
+                        run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
+                    
+                    doc.add_paragraph('')  # Add space after image
+                    print(f"✅ Added image placeholder {i+1}")
+                except Exception as e:
+                    print(f"❌ Error adding image {i+1}: {e}")
+            
+            # Process regular content (markdown tables, text, etc.)
             lines = content.splitlines()
             table_rows = [l for l in lines if l.strip().startswith('|') and l.strip().endswith('|')]
             if table_rows:
-                # Build table from detected rows
                 parsed_rows = []
                 for row in table_rows:
                     cells = [c.strip() for c in row.strip('|').split('|')]
@@ -1346,13 +1433,11 @@ def download_report(request):
                     table = doc.add_table(rows=len(parsed_rows), cols=len(parsed_rows[0]))
                     table.style = 'Table Grid'
                     
-                    # Apply DataFlow table styling
                     for r_idx, row_cells in enumerate(parsed_rows):
                         for c_idx, cell_text in enumerate(row_cells):
                             cell = table.cell(r_idx, c_idx)
                             cell.text = str(cell_text)
                             
-                            # Style header row with primary color
                             if r_idx == 0:
                                 for paragraph in cell.paragraphs:
                                     for run in paragraph.runs:
@@ -1360,96 +1445,82 @@ def download_report(request):
                                         run.font.bold = True
                                         run.font.color.rgb = RGBColor(255, 255, 255)  # White text
                                         run.font.size = Pt(11)
-                                # Header background
                                 cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
                                 cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
                             else:
-                                # Regular row styling
                                 for paragraph in cell.paragraphs:
                                     for run in paragraph.runs:
                                         run.font.name = 'Inter'
                                         run.font.size = Pt(10)
                                         run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                                
-                                # Alternate row background
-                                if r_idx % 2 == 1:
-                                    cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                    cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                                    
+                                    if r_idx % 2 == 1:
+                                        cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                        cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                        
+                        for column in table.columns:
+                            column.width = Inches(1.5)
                     
-                    # Auto-fit column widths
-                    for column in table.columns:
-                        column.width = Inches(1.5)
-                
-                # Add remaining non-table text with proper formatting
-                non_table_lines = [l for l in lines if l not in table_rows and l.strip()]
-                if non_table_lines:
-                    for line in non_table_lines:
-                        line = line.strip()
-                        if line.startswith('##'):
-                            # Section subheader
-                            subheading = doc.add_heading(line.replace('##', '').strip(), level=3)
+                    non_table_lines = [l for l in lines if l not in table_rows and l.strip()]
+                    if non_table_lines:
+                        for line in non_table_lines:
+                            line = line.strip()
+                            if line.startswith('##'):
+                                subheading = doc.add_heading(line.replace('##', '').strip(), level=3)
+                                for run in subheading.runs:
+                                    run.font.name = 'Inter'
+                                    run.font.size = Pt(14)
+                                    run.font.bold = True
+                                    run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+                            elif line.startswith('- **'):
+                                p = doc.add_paragraph()
+                                p.style = 'List Bullet'
+                                run = p.add_run(line.replace('- **', '').replace('**', ''))
+                                run.font.name = 'Inter'
+                                run.font.bold = True
+                                run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+                            elif line.startswith('- '):
+                                p = doc.add_paragraph()
+                                p.style = 'List Bullet'
+                                run = p.add_run(line.replace('- ', ''))
+                                run.font.name = 'Inter'
+                                run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                            elif line.strip():
+                                p = doc.add_paragraph(line)
+                                for run in p.runs:
+                                    run.font.name = 'Inter'
+                                    run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                else:
+                    paragraphs = content.split('\n\n')
+                    for para in paragraphs:
+                        para = para.strip()
+                        if para.startswith('##'):
+                            subheading = doc.add_heading(para.replace('##', '').strip(), level=3)
                             for run in subheading.runs:
                                 run.font.name = 'Inter'
                                 run.font.size = Pt(14)
                                 run.font.bold = True
                                 run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
-                        elif line.startswith('- **'):
-                            # Bullet point with bold
+                        elif para.startswith('- **'):
                             p = doc.add_paragraph()
                             p.style = 'List Bullet'
-                            run = p.add_run(line.replace('- **', '').replace('**', ''))
+                            run = p.add_run(para.replace('- **', '').replace('**', ''))
                             run.font.name = 'Inter'
                             run.font.bold = True
                             run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
-                        elif line.startswith('- '):
-                            # Regular bullet point
+                        elif para.startswith('- '):
                             p = doc.add_paragraph()
                             p.style = 'List Bullet'
-                            run = p.add_run(line.replace('- ', ''))
+                            run = p.add_run(para.replace('- ', ''))
                             run.font.name = 'Inter'
                             run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                        elif line.strip():
-                            # Regular paragraph
-                            p = doc.add_paragraph(line)
+                        elif para.strip():
+                            p = doc.add_paragraph(para)
                             for run in p.runs:
                                 run.font.name = 'Inter'
                                 run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-            else:
-                # Plain paragraph content with markdown formatting
-                paragraphs = content.split('\n\n')
-                for para in paragraphs:
-                    para = para.strip()
-                    if para.startswith('##'):
-                        # Section subheader
-                        subheading = doc.add_heading(para.replace('##', '').strip(), level=3)
-                        for run in subheading.runs:
-                            run.font.name = 'Inter'
-                            run.font.size = Pt(14)
-                            run.font.bold = True
-                            run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
-                    elif para.startswith('- **'):
-                        # Bullet point with bold
-                        p = doc.add_paragraph()
-                        p.style = 'List Bullet'
-                        run = p.add_run(para.replace('- **', '').replace('**', ''))
-                        run.font.name = 'Inter'
-                        run.font.bold = True
-                        run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
-                    elif para.startswith('- '):
-                        # Regular bullet point
-                        p = doc.add_paragraph()
-                        p.style = 'List Bullet'
-                        run = p.add_run(para.replace('- ', ''))
-                        run.font.name = 'Inter'
-                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                    elif para.strip():
-                        # Regular paragraph
-                        p = doc.add_paragraph(para)
-                        for run in p.runs:
-                            run.font.name = 'Inter'
-                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
 
-            doc.add_paragraph('')
+                doc.add_paragraph('')
 
         # Footer with DataFlow branding
         footer_paragraph = doc.add_paragraph()
