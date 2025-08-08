@@ -28,4 +28,7 @@ urlpatterns = [
     
     # AI Chat endpoints
     path('api/v1/chat/send_message/', views.send_chat_message, name='send_chat_message'),
+    path('api/v1/chat/history/', views.get_chat_history, name='get_chat_history'),
+    path('api/v1/report/add/', views.add_to_report, name='add_to_report'),
+    path('api/v1/report/download', views.download_report, name='download_report'),
 ]

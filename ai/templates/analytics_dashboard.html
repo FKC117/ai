@@ -835,6 +835,11 @@
 
                     <!-- Summary Statistics Content (Hidden by default) -->
                     <div class="hidden" id="summary-statistics-content">
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-lg font-semibold text-primary">Summary Statistics</h3>
+                            <button id="add-summary-to-report-btn" class="px-3 py-1 rounded text-xs"
+                                    style="background-color:#2563eb;color:#ffffff;border:1px solid #1e40af;">Add summary to report</button>
+                        </div>
                         <!-- Summary Overview -->
                     <div class="card mb-6">
                             <h3 class="text-lg font-semibold text-primary mb-4">Dataset Overview</h3>
@@ -984,11 +989,15 @@
                             <p class="text-sm text-text-secondary">Statistical insights & guidance</p>
                         </div>
                     </div>
-                    <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Minimize Panel">
+                    <div class="flex items-center space-x-2">
+                        <button id="download-report-btn" class="px-3 py-1 rounded text-xs"
+                                style="background-color:#374151;color:#ffffff;border:1px solid #1f2937;">Download report</button>
+                        <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Minimize Panel">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
                         </svg>
-                    </button>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -1149,14 +1158,7 @@
             let datasets = [];
             let currentDatasetIndex = -1; // Start with no dataset selected
             
-            // Load user state from backend
-            loadUserState();
-            loadWarningPreferences();
-            
-            // Add event listener for multiselect toggle
-            document.getElementById('multiselect-toggle').addEventListener('click', toggleMultiselectMode);
-            
-            // Function to load user state
+            // Load user state and initialize
             function loadUserState() {
                 fetch('{% url "get_user_state" %}')
                     .then(response => response.json())
@@ -1176,8 +1178,19 @@
                         updateDatasetHistory();
                         updateDatasetCount();
                         
+                        // If a current dataset exists, ensure backend sets/returns active session and capture its id
+                        if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
+                            saveCurrentDataset(datasets[currentDatasetIndex].id);
+                        }
+
                         // Show appropriate state - showBlankState() now handles the logic correctly
                         showBlankState();
+                        
+                        // Load chat history for current dataset if available
+                        if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
+                            window.currentDatasetId = datasets[currentDatasetIndex].id;
+                            loadChatHistory();
+                        }
                         
                         console.log('User state loaded:', {
                             datasets: datasets.length,
@@ -1206,6 +1219,14 @@
                 .then(data => {
                     if (data.success) {
                         console.log('Current dataset saved:', data.message);
+                        // Capture active session id for reporting/AI context
+                        if (data.session_id) {
+                            currentSessionId = data.session_id;
+                        }
+                        // Ensure local dataset id/name are set
+                        currentDatasetId = datasetId;
+                        const ds = datasets.find(d => d.id === datasetId);
+                        if (ds) { currentDatasetName = ds.name; }
                     } else {
                         console.error('Error saving current dataset:', data.error);
                     }
@@ -2497,263 +2518,117 @@
             const passDataButton = document.getElementById('pass-data-to-ai');
             const aiContextInfo = document.getElementById('ai-context-info');
             
-            let currentSessionId = null;
-            let currentDatasetId = null;
-            let currentAnalysisType = null;
-            let conversationHistory = [];
-            let userInitials = '{{ user.first_name|first }}{{ user.last_name|first }}' || 'U';
+            // Make chat variables globally accessible
+            window.chatMessages = chatMessages;
+            window.chatInput = chatInput;
+            window.currentSessionId = null;
+            window.currentDatasetId = null;
+            window.currentAnalysisType = null;
+            window.conversationHistory = [];
+            window.userInitials = '{{ user.first_name|first }}{{ user.last_name|first }}' || 'U';
             
             // Initialize chat session
             function initializeChatSession() {
-                currentSessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
-                conversationHistory = [];
-                
-                // Clear existing messages except welcome
-                const welcomeMessage = chatMessages.querySelector('.flex.items-start:first-child');
-                chatMessages.innerHTML = '';
-                if (welcomeMessage) {
-                    chatMessages.appendChild(welcomeMessage);
+                if (!window.chatMessages) {
+                    console.error('Chat messages element not found');
+                    return;
                 }
-            }
-            
-            // Pass data to AI
-            passDataButton.addEventListener('click', function() {
-                if (currentDatasetId) {
-                    // Update context info
-                    aiContextInfo.textContent = `Dataset: ${currentDatasetName || 'Current Dataset'} | Analysis: ${currentAnalysisType || 'Summary Statistics'}`;
-                    
-                    // Add system message to chat
-                    const systemMessage = document.createElement('div');
-                    systemMessage.className = 'flex items-start';
-                    systemMessage.innerHTML = `
-                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                            <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
-                        </div>
-                    `;
-                    chatMessages.appendChild(systemMessage);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                    
-                    // Store context in conversation history
-                    conversationHistory.push({
-                        role: 'system',
-                        content: `Dataset loaded: ${currentDatasetName || 'Current Dataset'} | Analysis type: ${currentAnalysisType || 'Summary Statistics'}`
-                    });
-                    
-                    // Update button state
-                    this.disabled = true;
-                    this.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Data Loaded';
-                    this.classList.remove('btn-accent');
-                    this.classList.add('bg-success', 'text-white');
-                } else {
-                    // Show error if no dataset
-                    const errorMessage = document.createElement('div');
-                    errorMessage.className = 'flex items-start';
-                    errorMessage.innerHTML = `
-                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                            <p class="text-sm text-text-primary">⚠️ Please upload a dataset first before passing data to AI.</p>
-                        </div>
-                    `;
-                    chatMessages.appendChild(errorMessage);
-                    chatMessages.scrollTop = chatMessages.scrollHeight;
-                }
-            });
-            
-            async function sendMessage() {
-                const message = chatInput.value.trim();
-                if (!message) return;
                 
-                                    // Add user message to UI
-                    const userMessage = document.createElement('div');
-                    userMessage.className = 'flex items-start justify-end';
-                    userMessage.innerHTML = `
-                        <div class="bg-primary rounded-lg p-3 max-w-full chat-content-resizable">
-                            <p class="text-sm text-white">${message}</p>
-                        </div>
-                        <div class="w-8 h-8 bg-primary rounded-full flex items-center justify-center ml-3 flex-shrink-0 text-white font-semibold text-sm">
-                            ${userInitials || 'U'}
-                        </div>
-                    `;
-                chatMessages.appendChild(userMessage);
+                console.log('Initializing chat session...');
+                window.conversationHistory = [];
                 
-                // Store in conversation history
-                conversationHistory.push({
-                    role: 'user',
-                    content: message
-                });
+                // Clear existing messages
+                window.chatMessages.innerHTML = '';
                 
-                // Clear input
-                chatInput.value = '';
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-                
-                // Show typing indicator
-                const typingIndicator = document.createElement('div');
-                typingIndicator.className = 'flex items-start';
-                typingIndicator.innerHTML = `
+                // Add initial greeting message
+                const greetingMessage = document.createElement('div');
+                greetingMessage.className = 'flex items-start';
+                greetingMessage.innerHTML = `
                     <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
                         <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
                     <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                        <div class="flex space-x-1">
-                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce"></div>
-                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0.1s"></div>
-                            <div class="w-2 h-2 bg-accent rounded-full animate-bounce" style="animation-delay: 0.2s"></div>
-                        </div>
+                        <p class="text-sm text-text-primary">👋 Hello! I'm your AI analytics assistant. I can help you interpret your data, explain patterns, and suggest insights. Upload a dataset and click "Pass Data to AI" to get started!</p>
                     </div>
                 `;
-                chatMessages.appendChild(typingIndicator);
-                chatMessages.scrollTop = chatMessages.scrollHeight;
+                window.chatMessages.appendChild(greetingMessage);
+                window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
+                console.log('Chat session initialized with greeting message');
+            }
+            
+            // Make sendMessage globally accessible
+            window.sendMessage = async function() {
+                const message = window.chatInput.value.trim();
+                if (!message) return;
+                
+                if (!window.currentDatasetId) {
+                    alert('Please select a dataset first.');
+                    return;
+                }
+                
+                console.log('Sending message:', message);
+                console.log('Current dataset ID:', window.currentDatasetId);
+                console.log('Current session ID:', window.currentSessionId);
+                
+                // Add user message to chat
+                addChatMessage(message, 'user');
+                window.chatInput.value = '';
                 
                 try {
-                    // Send to AI backend
+                    const payload = {
+                        message: message,
+                        dataset_id: window.currentDatasetId,
+                        session_id: window.currentSessionId
+                    };
+                    
+                    console.log('Sending payload:', payload);
+                    
                     const response = await fetch('/api/v1/chat/send_message/', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                             'X-CSRFToken': getCookie('csrftoken')
                         },
-                        body: JSON.stringify({
-                            message: message,
-                            session_id: currentSessionId,
-                            context: {
-                                dataset_id: currentDatasetId,
-                                analysis_type: currentAnalysisType,
-                                conversation_history: conversationHistory.slice(-10) // Keep last 10 messages
-                            }
-                        })
+                        body: JSON.stringify(payload)
                     });
                     
-                    // Remove typing indicator
-                    chatMessages.removeChild(typingIndicator);
+                    console.log('Response status:', response.status);
                     
                     if (response.ok) {
                         const data = await response.json();
+                        console.log('Response data:', data);
+                        addChatMessage(data.response, 'ai', data.message_id, false);
                         
-                        // Add AI response to UI
-                        const aiResponse = document.createElement('div');
-                        aiResponse.className = 'flex items-start';
-                        aiResponse.innerHTML = `
-                            <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                                <div class="text-sm text-text-primary">${formatAIResponse(data.response)}</div>
-                            </div>
-                        `;
-                        chatMessages.appendChild(aiResponse);
-                        
-                        // Store in conversation history
-                        conversationHistory.push({
-                            role: 'assistant',
-                            content: data.response
-                        });
-                        
+                        // Update session ID if we got one
+                        if (data.session_id) {
+                            window.currentSessionId = data.session_id;
+                        }
                     } else {
-                        // Show error response
-                        const errorResponse = document.createElement('div');
-                        errorResponse.className = 'flex items-start';
-                        errorResponse.innerHTML = `
-                            <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                                <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                                </svg>
-                            </div>
-                            <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                                <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
-                            </div>
-                        `;
-                        chatMessages.appendChild(errorResponse);
+                        const errorText = await response.text();
+                        console.error('Response error:', errorText);
+                        const error = await response.json().catch(() => ({ error: 'Failed to send message' }));
+                        alert(error.error || 'Failed to send message');
                     }
-                    
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    
-                    // Remove typing indicator
-                    chatMessages.removeChild(typingIndicator);
-                    
-                    // Show error response
-                    const errorResponse = document.createElement('div');
-                    errorResponse.className = 'flex items-start';
-                    errorResponse.innerHTML = `
-                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                            <p class="text-sm text-text-primary">Sorry, I encountered an error processing your request. Please try again.</p>
-                        </div>
-                    `;
-                    chatMessages.appendChild(errorResponse);
+                    alert('Failed to send message: ' + error.message);
                 }
-                
-                chatMessages.scrollTop = chatMessages.scrollHeight;
-            }
+            };
             
-            // Helper function to format AI responses with proper HTML structure
-            function formatAIResponse(response) {
-                // Convert markdown-style formatting to HTML
-                let formattedResponse = response
-                    // Convert **text** to <strong>text</strong>
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    // Convert *text* to <em>text</em>
-                    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                    // Convert bullet points to proper HTML lists
-                    .replace(/^\s*•\s*(.*)$/gm, '<li>$1</li>')
-                    .replace(/^\s*-\s*(.*)$/gm, '<li>$1</li>')
-                    // Convert numbered lists
-                    .replace(/^\s*(\d+)\.\s*(.*)$/gm, '<li>$2</li>')
-                    // Convert headers (## text to h3)
-                    .replace(/^##\s*(.*)$/gm, '<h3 class="text-base font-semibold text-primary mb-2 mt-3">$1</h3>')
-                    // Convert subheaders (### text to h4)
-                    .replace(/^###\s*(.*)$/gm, '<h4 class="text-sm font-semibold text-primary mb-1 mt-2">$1</h4>')
-                    // Convert code blocks
-                    .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
-                
-                // Format tables - convert markdown tables to HTML tables
-                formattedResponse = formattedResponse.replace(/\|(.+)\|/g, function(match, row) {
-                    const cells = row.split('|').map(cell => cell.trim());
-                    return '<tr>' + cells.map(cell => `<td class="px-2 py-1 border border-gray-300 text-xs">${cell}</td>`).join('') + '</tr>';
-                });
-                
-                // Wrap table rows in proper table structure
-                formattedResponse = formattedResponse.replace(/(<tr>.*<\/tr>)/gs, function(match) {
-                    return '<div class="overflow-x-auto mb-3"><table class="min-w-full border border-gray-300 text-xs">' + match + '</table></div>';
-                });
-                
-                // Handle table headers (lines with dashes after table rows)
-                formattedResponse = formattedResponse.replace(/\|(\s*[-:]+\s*\|)+/g, '');
-                
-                // Wrap lists in proper HTML structure
-                formattedResponse = formattedResponse
-                    .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 mb-3">$1</ul>')
-                    .replace(/<\/ul>\s*<ul/g, '</ul><ul');
-                
-                // Split into paragraphs and wrap in proper HTML
-                const paragraphs = formattedResponse.split('\n\n').filter(p => p.trim());
-                const formattedParagraphs = paragraphs.map(p => {
-                    if (p.startsWith('<h3') || p.startsWith('<h4') || p.startsWith('<ul') || p.startsWith('<div class="overflow-x-auto')) {
-                        return p;
-                    } else if (p.trim()) {
-                        return `<p class="text-sm text-text-primary mb-2 leading-relaxed">${p}</p>`;
+            // Global Download Report button (sticky at bottom of chat panel)
+            const headerDlBtn = document.getElementById('download-report-btn');
+            if (headerDlBtn && !headerDlBtn.dataset.bound) {
+                headerDlBtn.dataset.bound = '1';
+                headerDlBtn.addEventListener('click', () => {
+                    if (!currentDatasetId || !currentSessionId) {
+                        alert('Please select a dataset first.');
+                        return;
                     }
-                    return '';
-                }).join('');
-                
-                return formattedParagraphs;
+                    const url = `/api/v1/report/download?dataset_id=${encodeURIComponent(currentDatasetId)}&session_id=${encodeURIComponent(currentSessionId)}`;
+                    window.open(url, '_blank');
+                });
             }
             
             // Helper function to get CSRF token
@@ -2773,7 +2648,12 @@
             }
             
             // Initialize chat on page load
-            initializeChatSession();
+            // Wait for DOM to be fully loaded
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', initializeChatSession);
+            } else {
+                initializeChatSession();
+            }
             
             sendButton.addEventListener('click', sendMessage);
             chatInput.addEventListener('keypress', function(e) {
@@ -2781,6 +2661,51 @@
                     sendMessage();
                 }
             });
+
+            // Wire Add summary to report
+            const addSummaryBtn = document.getElementById('add-summary-to-report-btn');
+            if (addSummaryBtn && !addSummaryBtn.dataset.bound) {
+                addSummaryBtn.dataset.bound = '1';
+                addSummaryBtn.addEventListener('click', async () => {
+                    if (!currentDatasetId || !currentSessionId) {
+                        alert('Please select a dataset first.');
+                        return;
+                    }
+                    try {
+                        const res = await fetch(`/api/summary-statistics/${currentDatasetId}/`);
+                        if (!res.ok) throw new Error('Failed to load summary');
+                        const summaryData = await res.json();
+                        // cache for later if needed
+                        window.__lastSummaryData = summaryData;
+
+                        const payload = {
+                            dataset_id: currentDatasetId,
+                            session_id: currentSessionId,
+                            title: 'Summary Statistics',
+                            content: '', // let backend generate clean markdown
+                            section_type: 'summary_statistics',
+                            metadata: { analysis_type: 'summary_statistics' }
+                        };
+                        const saveRes = await fetch('/api/v1/report/add/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                            body: JSON.stringify(payload)
+                        });
+                        if (saveRes.ok) {
+                            addSummaryBtn.textContent = 'Added';
+                            addSummaryBtn.disabled = true;
+                            addSummaryBtn.style.backgroundColor = '#16a34a';
+                            addSummaryBtn.style.borderColor = '#15803d';
+                        } else {
+                            const err = await saveRes.json().catch(() => ({ error: 'Failed to add summary to report' }));
+                            alert(err.error || 'Failed to add summary to report');
+                        }
+                    } catch (e) {
+                        console.error(e);
+                        alert('Failed to add summary to report');
+                    }
+                });
+            }
             
             // Mobile responsiveness
             const mobileMenuBtn = document.getElementById('mobile-menu-btn');
@@ -2976,9 +2901,9 @@
                 const leftPanel = document.getElementById('left-panel');
                 const rightPanel = document.getElementById('right-panel');
                 if (leftPanel && rightPanel) {
-                    leftPanel.classList.toggle('hidden');
-                    rightPanel.classList.toggle('hidden');
-                    mobileOverlay.classList.toggle('hidden');
+                leftPanel.classList.toggle('hidden');
+                rightPanel.classList.toggle('hidden');
+                mobileOverlay.classList.toggle('hidden');
                 }
             });
             
@@ -2986,9 +2911,9 @@
                 const leftPanel = document.getElementById('left-panel');
                 const rightPanel = document.getElementById('right-panel');
                 if (leftPanel && rightPanel) {
-                    leftPanel.classList.add('hidden');
-                    rightPanel.classList.add('hidden');
-                    mobileOverlay.classList.add('hidden');
+                leftPanel.classList.add('hidden');
+                rightPanel.classList.add('hidden');
+                mobileOverlay.classList.add('hidden');
                 }
             });
             
@@ -3011,7 +2936,176 @@
                     helpTooltip.classList.add('hidden');
                 });
             });
+
+            // Load chat history when dataset changes
+            async function loadChatHistory() {
+                if (!window.currentDatasetId) return;
+                
+                try {
+                    const response = await fetch(`/api/v1/chat/history/?dataset_id=${window.currentDatasetId}&session_id=${window.currentSessionId || ''}`);
+                    if (response.ok) {
+                        const data = await response.json();
+                        
+                        // Clear existing messages
+                        window.chatMessages.innerHTML = '';
+                        
+                        // Add messages to chat
+                        data.messages.forEach(message => {
+                            if (message.type === 'user') {
+                                addChatMessage(message.content, 'user');
+                            } else if (message.type === 'ai') {
+                                addChatMessage(message.content, 'ai', message.id, message.is_added_to_report);
+                            }
+                        });
+                        
+                        // Update session ID if we got one
+                        if (data.session_id) {
+                            window.currentSessionId = data.session_id;
+                        }
+                        
+                        // Scroll to bottom
+                        window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
+                    }
+                } catch (error) {
+                    console.error('Error loading chat history:', error);
+                }
+            }
+
+            // Function to select a dataset from history
+            function selectDatasetFromHistory(datasetId) {
+                if (!datasetId) return;
+                
+                // Update current dataset
+                window.currentDatasetId = datasetId;
+                
+                // Find the dataset in our list
+                const dataset = datasets.find(d => d.id === datasetId);
+                if (dataset) {
+                    currentDatasetIndex = datasets.indexOf(dataset);
+                    updateCurrentDatasetDisplay(dataset);
+                    
+                    // Set as current dataset in backend
+                    saveCurrentDataset(datasetId);
+                    
+                    // Load chat history for this dataset
+                    loadChatHistory();
+                }
+            }
+
+            // Load user state and initialize
+            loadUserState();
+            loadWarningPreferences();
+            
+            // Add event listener for multiselect toggle
+            document.getElementById('multiselect-toggle').addEventListener('click', toggleMultiselectMode);
+
+            // Pass data to AI
+            passDataButton.addEventListener('click', function() {
+                if (window.currentDatasetId) {
+                    // Update context info
+                    aiContextInfo.textContent = `Dataset: ${window.currentDatasetName || 'Current Dataset'} | Analysis: ${window.currentAnalysisType || 'Summary Statistics'}`;
+                    
+                    // Add system message to chat
+                    const systemMessage = document.createElement('div');
+                    systemMessage.className = 'flex items-start';
+                    systemMessage.innerHTML = `
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                            <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
+                        </div>
+                    `;
+                    window.chatMessages.appendChild(systemMessage);
+                    window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
+                    
+                    // Store context in conversation history
+                    window.conversationHistory.push({
+                        role: 'system',
+                        content: `Dataset loaded: ${window.currentDatasetName || 'Current Dataset'} | Analysis type: ${window.currentAnalysisType || 'Summary Statistics'}`
+                    });
+                    
+                    // Update button state
+                    this.disabled = true;
+                    this.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Data Loaded';
+                    this.classList.remove('btn-accent');
+                    this.classList.add('bg-success', 'text-white');
+                } else {
+                    // Show error if no dataset
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'flex items-start';
+                    errorMessage.innerHTML = `
+                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
+                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                            </svg>
+                        </div>
+                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                            <p class="text-sm text-text-primary">⚠️ Please upload a dataset first before passing data to AI.</p>
+                        </div>
+                    `;
+                    window.chatMessages.appendChild(errorMessage);
+                    window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
+                }
+            });
+            
+
         });
+        
+        // Helper function to format AI responses with proper HTML structure
+        function formatAIResponse(response) {
+            // Convert markdown-style formatting to HTML
+            let formattedResponse = response
+                // Convert **text** to <strong>text</strong>
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                // Convert *text* to <em>text</em>
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                // Convert bullet points to proper HTML lists
+                .replace(/^\s*•\s*(.*)$/gm, '<li>$1</li>')
+                .replace(/^\s*-\s*(.*)$/gm, '<li>$1</li>')
+                // Convert numbered lists
+                .replace(/^\s*(\d+)\.\s*(.*)$/gm, '<li>$2</li>')
+                // Convert headers (## text to h3)
+                .replace(/^##\s*(.*)$/gm, '<h3 class="text-base font-semibold text-primary mb-2 mt-3">$1</h3>')
+                // Convert subheaders (### text to h4)
+                .replace(/^###\s*(.*)$/gm, '<h4 class="text-sm font-semibold text-primary mb-1 mt-2">$1</h4>')
+                // Convert code blocks
+                .replace(/`([^`]+)`/g, '<code class="bg-gray-100 px-1 py-0.5 rounded text-xs font-mono">$1</code>');
+            
+            // Format tables - convert markdown tables to HTML tables
+            formattedResponse = formattedResponse.replace(/\|(.+)\|/g, function(match, row) {
+                const cells = row.split('|').map(cell => cell.trim());
+                return '<tr>' + cells.map(cell => `<td class="px-2 py-1 border border-gray-300 text-xs">${cell}</td>`).join('') + '</tr>';
+            });
+            
+            // Wrap table rows in proper table structure
+            formattedResponse = formattedResponse.replace(/(<tr>.*<\/tr>)/gs, function(match) {
+                return '<div class="overflow-x-auto mb-3"><table class="min-w-full border border-gray-300 text-xs">' + match + '</table></div>';
+            });
+            
+            // Handle table headers (lines with dashes after table rows)
+            formattedResponse = formattedResponse.replace(/\|(\s*[-:]+\s*\|)+/g, '');
+            
+            // Wrap lists in proper HTML structure
+            formattedResponse = formattedResponse
+                .replace(/(<li>.*<\/li>)/gs, '<ul class="list-disc list-inside space-y-1 mb-3">$1</ul>')
+                .replace(/<\/ul>\s*<ul/g, '</ul><ul');
+            
+            // Split into paragraphs and wrap in proper HTML
+            const paragraphs = formattedResponse.split('\n\n').filter(p => p.trim());
+            const formattedParagraphs = paragraphs.map(p => {
+                if (p.startsWith('<h3') || p.startsWith('<h4') || p.startsWith('<ul') || p.startsWith('<div class="overflow-x-auto')) {
+                    return p;
+                } else if (p.trim()) {
+                    return `<p class="text-sm text-text-primary mb-2 leading-relaxed">${p}</p>`;
+                }
+                return '';
+            }).join('');
+            
+            return formattedParagraphs;
+        }
         
         // D3.js Chart Implementation
         function initializeChart() {
@@ -3157,6 +3251,91 @@
                     titleElement.textContent = titles[tabId];
                 }
             }, 500);
+        }
+
+        function addChatMessage(content, sender, messageId = null, isAddedToReport = false) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
+            
+            const messageContent = document.createElement('div');
+            messageContent.className = `max-w-xs lg:max-w-md xl:max-w-lg 2xl:max-w-xl px-4 py-2 rounded-lg ${
+                sender === 'user' 
+                    ? 'bg-primary text-white' 
+                    : 'bg-gray-100 text-gray-800'
+            }`;
+            
+            if (sender === 'ai') {
+                // Format AI response with markdown-like formatting
+                const formattedContent = formatAIResponse(content);
+                messageContent.innerHTML = formattedContent;
+                
+                // Add "Add to report" button if not already added
+                if (!isAddedToReport) {
+                    const buttonDiv = document.createElement('div');
+                    buttonDiv.className = 'mt-3 flex items-center space-x-2';
+                    buttonDiv.innerHTML = `
+                        <button data-role="add-to-report" class="px-3 py-1 rounded text-xs"
+                                style="background-color:#2563eb;color:#ffffff;border:1px solid #1e40af;">Add to report</button>
+                    `;
+                    messageContent.appendChild(buttonDiv);
+                    
+                    // Add event listener for the button
+                    const addBtn = messageContent.querySelector('button[data-role="add-to-report"]');
+                    if (addBtn && messageId) {
+                        addBtn.addEventListener('click', async () => {
+                            if (!window.currentDatasetId || !window.currentSessionId) {
+                                alert('Please select a dataset first.');
+                                return;
+                            }
+                            
+                            try {
+                                const payload = {
+                                    dataset_id: window.currentDatasetId,
+                                    session_id: window.currentSessionId,
+                                    title: 'AI Analysis',
+                                    content: content,
+                                    section_type: 'ai_response',
+                                    message_id: messageId
+                                };
+                                
+                                const res = await fetch('/api/v1/report/add/', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                                    body: JSON.stringify(payload)
+                                });
+                                
+                                if (res.ok) {
+                                    addBtn.textContent = 'Added';
+                                    addBtn.disabled = true;
+                                    addBtn.style.backgroundColor = '#10b981';
+                                    addBtn.style.borderColor = '#059669';
+                                } else {
+                                    const err = await res.json().catch(() => ({ error: 'Failed to add to report' }));
+                                    alert(err.error || 'Failed to add to report');
+                                }
+                            } catch (e) {
+                                console.error(e);
+                                alert('Failed to add to report');
+                            }
+                        });
+                    }
+                } else {
+                    // Show "Already added" indicator
+                    const addedDiv = document.createElement('div');
+                    addedDiv.className = 'mt-3 flex items-center space-x-2';
+                    addedDiv.innerHTML = `
+                        <span class="px-3 py-1 rounded text-xs"
+                              style="background-color:#10b981;color:#ffffff;border:1px solid #059669;">✓ Added to report</span>
+                    `;
+                    messageContent.appendChild(addedDiv);
+                }
+            } else {
+                messageContent.textContent = content;
+            }
+            
+            messageDiv.appendChild(messageContent);
+            window.chatMessages.appendChild(messageDiv);
+            window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
         }
     </script>
 </body>

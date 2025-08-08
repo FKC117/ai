@@ -1,0 +1,135 @@
+,doctor_name,status,surgery date,calculation time,time_in_mos,tumor size,sex,age,tumour_location,latarality,hpr,grade,surgery type,gfap,idh1/ idh2,atrx,mgmt,adjuvant cht,age_group
+1,prof. dr. qamruzzaman chowdhury,0,2020-11-03,2024-06-30,44.5,,female,38.84931506849315,cp angle,right,astrocytoma,grade iii,gtr,positive,negative,,,,Young
+2,prof. dr. qamruzzaman chowdhury,1,2019-01-15,2021-04-28,27.8,,female,57.78356164383562,temporo-parietal,left,astrocytoma,grade ii,gtr,not tested,not tested,,,,Young
+3,prof. dr. qamruzzaman chowdhury,1,2019-01-07,2020-01-30,12.933333333333334,,male,61.78082191780822,parietal,right,gbm,grade iv,ntr,not tested,not tested,,,,Senior Adult
+4,prof. dr. qamruzzaman chowdhury,1,2018-12-26,2020-06-01,17.433333333333334,,male,50.74246575342466,frontal,right,astrocytoma,grade ii,gtr,positive,not tested,,,,Young
+5,prof. dr. qamruzzaman chowdhury,1,2019-02-04,2019-10-27,8.833333333333334,,male,46.37534246575343,temporal,left,gbm,grade iv,gtr,not tested,not tested,,negative,tmz,Young
+6,prof. dr. qamruzzaman chowdhury,1,2021-04-09,2021-12-20,8.5,,female,37.33698630136986,temporal,right,oligodendroglioma,grade ii,gtr,not tested,positive,,,vincristine + procarbazine + ccnu,Young
+7,prof. dr. qamruzzaman chowdhury,0,2018-11-17,2024-06-30,68.4,,male,33.827397260273976,frontal,right,oligodendroglioma,grade ii,gtr,not tested,positive,,,,Young
+8,prof. dr. qamruzzaman chowdhury,1,2019-03-18,2019-04-08,0.7,,female,57.62465753424657,temporal,right,gbm,grade iv,ntr,not tested,not tested,,,,Young
+9,prof. dr. qamruzzaman chowdhury,1,2019-04-09,2019-12-02,7.9,,female,63.53150684931507,fronto-temporal,left,gbm,grade iv,gtr,not tested,not tested,,,tmz,Senior Adult
+10,prof. dr. qamruzzaman chowdhury,1,2019-05-30,2019-06-11,0.4,,female,55.83013698630137,frontal,right,astrocytoma,grade iii,gtr,not tested,not tested,,,,Young
+11,prof. dr. qamruzzaman chowdhury,1,2019-06-15,2019-07-04,0.6333333333333333,,female,52.38630136986301,temporal,right,gbm,grade iv,gtr,not tested,not tested,,negative,,Young
+12,prof. dr. qamruzzaman chowdhury,1,2018-08-31,2024-06-30,71.0,3.1 x 2.0 cm,female,29.17808219178082,fronto-parietal,left,astrocytoma,grade ii,str,not tested,positive,,,tmz,Young
+13,prof. dr. qamruzzaman chowdhury,0,2019-02-15,2024-06-30,65.4,5 x 3 mm,female,42.24383561643835,parietal,left,oligodendroglioma,grade ii,gtr,positive,positive,,,vincristine + procarbazine,Young
+14,prof. dr. qamruzzaman chowdhury,1,2019-08-02,2019-08-18,0.5333333333333333,,male,49.00547945205479,frontal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+15,prof. dr. qamruzzaman chowdhury,1,2019-06-30,2023-01-18,43.266666666666666,3.7x3.4x3.4 cm,male,54.16712328767123,frontal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+16,prof. dr. qamruzzaman chowdhury,1,2019-08-11,2020-05-05,8.933333333333334,4.3x2.5x4cm,male,43.131506849315066,temporal,left,gbm,grade iv,str,positive,not tested,,,,Young
+17,prof. dr. qamruzzaman chowdhury,1,2019-11-16,2021-07-07,19.966666666666665,,female,59.66027397260274,temporal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+18,prof. dr. qamruzzaman chowdhury,0,2019-02-17,2024-06-30,65.33333333333333,8 x 1.8 cm,male,36.92054794520548,parietal,right,gbm,grade iv,gtr,not tested,not tested,,,tmz,Young
+19,prof. dr. qamruzzaman chowdhury,1,2019-12-03,2020-03-09,3.2333333333333334,8.8 x 8.5 cm,female,66.90958904109588,ventricle,central,astrocytoma,grade iv,gtr,positive,positive,,positive,tmz,Senior Adult
+20,prof. dr. qamruzzaman chowdhury,1,2020-01-14,2020-08-24,7.433333333333334,,male,79.81643835616438,frontal,right,gbm,grade iv,gtr,not tested,negative,,positive,,Senior Adult
+21,prof. dr. qamruzzaman chowdhury,0,2020-07-15,2024-06-30,48.2,1.2 x 1.1 cm,male,23.824657534246576,frontal,right,oligodendroglioma,grade ii,gtr,positive,positive,,,,Young
+22,prof. dr. qamruzzaman chowdhury,1,2020-01-03,2020-06-04,5.1,,male,33.75890410958904,parietal,right,astrocytoma,grade ii,str,positive,not tested,,,,Young
+23,prof. dr. qamruzzaman chowdhury,1,2019-07-11,2020-02-05,6.966666666666667,,male,62.73698630136986,parietal,right,gbm,grade ii,gtr,not tested,not tested,,,tmz,Senior Adult
+25,dr. md. arifur rahman,1,2020-03-17,2022-06-11,27.2,9 mm,male,54.632876712328766,parietal,right,gbm,grade iv,gtr,not tested,negative,,,tmz,Young
+26,prof. dr. qamruzzaman chowdhury,1,2020-12-21,2021-03-22,3.033333333333333,4.3 x 3.7 cm,male,46.04109589041096,parietal,left,gbm,grade iv,gtr,not tested,not tested,,positive,tmz,Young
+27,prof. dr. qamruzzaman chowdhury,1,2020-05-19,2021-02-28,9.5,7.5x5.5cm,male,62.463013698630135,fronto-temporal,left,gbm,grade iv,str,not tested,not tested,,positive,tmz,Senior Adult
+28,prof. dr. qamruzzaman chowdhury,1,2020-06-20,2022-09-01,26.766666666666666,,male,57.42191780821918,temporal,left,gbm,grade iv,gtr,not tested,not tested,,positive,tmz,Young
+29,prof. dr. qamruzzaman chowdhury,1,2020-06-14,2021-03-26,9.5,3.1 x2.1 x 2.2 cm,female,51.74520547945205,frontal,right,astrocytoma,grade iv,gtr,not tested,positive,,negative,,Young
+31,prof. dr. qamruzzaman chowdhury,1,2020-07-19,2021-07-18,12.133333333333333,2.02x1.05cm,male,54.30958904109589,fronto-parietal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+33,prof. dr. qamruzzaman chowdhury,1,2020-08-19,2021-08-21,12.233333333333333,"3.2x2.6cm, 2x1.8cm",male,54.26849315068493,frontal,right,astrocytoma,grade iv,gtr,positive,positive,,negative,x,Young
+34,prof. dr. qamruzzaman chowdhury,1,2020-08-05,2020-12-31,4.933333333333334,,female,56.26575342465753,frontal,right,astrocytoma,grade iv,gtr,positive,positive,,negative,,Young
+36,prof. dr. qamruzzaman chowdhury,1,2020-09-09,2022-04-24,19.733333333333334,5.1 x 5.1 x 5.0 cm,male,59.16164383561644,frontal,left,gbm,grade iv,gtr,not tested,not tested,,positive,,Young
+37,prof. dr. qamruzzaman chowdhury,1,2020-09-13,2022-09-12,24.3,4.0 x 3.8 x 3.0 cm,female,41.156164383561645,occipital,right,gbm,grade iv,gtr,not tested,not tested,,,tmz,Young
+38,prof. dr. qamruzzaman chowdhury,0,2020-09-19,2024-06-30,46.0,5.04x4.01cm,female,49.53150684931507,temporal,left,gbm,grade iv,gtr,positive,negative,,x,,Young
+39,prof. dr. qamruzzaman chowdhury,1,2020-09-20,2021-09-08,11.766666666666667,,male,65.4904109589041,insular,right,astrocytoma,grade iv,str,positive,positive,,negative,,Senior Adult
+40,prof. dr. qamruzzaman chowdhury,1,2020-09-30,2021-12-31,15.233333333333333,5.2 cm x  4.9 m x 4.5 cm,female,43.0986301369863,parietal,right,astrocytoma,grade ii,gtr,not tested,not tested,,positive,,Young
+41,prof. dr. qamruzzaman chowdhury,1,2020-10-18,2021-05-30,7.466666666666667,,female,41.07397260273972,frontal,right,astrocytoma,grade ii,gtr,positive,positive,,,,Young
+42,prof. dr. qamruzzaman chowdhury,0,2020-10-14,2024-06-30,45.166666666666664,4.5 cm x 3.6 cm x  4.0 cm,female,39.827397260273976,frontal,right,oligodendroglioma,grade ii,gtr,not tested,positive,,,,Young
+43,prof. dr. qamruzzaman chowdhury,1,2018-01-01,2020-10-12,33.833333333333336,,male,35.23013698630137,spinal,spinal,astrocytoma,grade iii,str,not tested,not tested,,,,Young
+44,prof. dr. qamruzzaman chowdhury,1,2020-11-02,2022-04-28,18.066666666666666,5.17x4x3.47cm,female,56.61095890410959,parieto-occipital,right,gbm,grade iv,str,positive,negative,,,tmz,Young
+45,prof. dr. qamruzzaman chowdhury,1,2020-11-09,2022-11-01,24.066666666666666,8.0 cm x 6.0 cm x 7.0 cm,male,29.035616438356165,fronto-parietal,right,astrocytoma,grade iii,str,not tested,positive,,,tmz,Young
+47,prof. dr. qamruzzaman chowdhury,0,2020-12-20,2024-06-30,42.93333333333333,4.0 cm x 3.6 cm x 3.7 cm,female,19.882191780821916,temporo-parietal,right,astrocytoma,grade iii,gtr,positive,not tested,,positive,,Young
+48,prof. dr. qamruzzaman chowdhury,1,2020-11-15,2020-12-31,1.5333333333333334,,male,71.01095890410959,thalamic,right,astrocytoma,grade iii,str,not tested,positive,,negative,,Senior Adult
+49,prof. dr. qamruzzaman chowdhury,1,2020-11-04,2021-09-03,10.1,6.5 cm x 4.5 cm x 6.6 cm,male,49.25753424657534,frontal,right,gbm,grade iv,str,positive,not tested,,,,Young
+50,prof. dr. qamruzzaman chowdhury,1,2020-12-17,2023-11-18,35.53333333333333,5 cm x 4.8 cmx4 cm,female,63.97534246575343,parietal,left,gbm,grade iv,gtr,positive,negative,,,tmz,Senior Adult
+51,prof. dr. qamruzzaman chowdhury,1,2020-12-08,2021-05-28,5.7,(5.7 x 5.4) cm,male,65.93424657534247,temporal,right,gbm,grade iv,gtr,positive,negative,,negative,,Senior Adult
+53,prof. dr. qamruzzaman chowdhury,0,2019-06-25,2024-06-30,61.06666666666667,,male,37.016438356164386,fronto-parietal,left,gbm,grade iv,gtr,not tested,not tested,,negative,tmz,Young
+54,prof. dr. qamruzzaman chowdhury,1,2020-12-30,2021-07-12,6.466666666666667,3.0x3.0x4.0cm,male,42.83835616438356,parieto-occipital,right,gbm,grade iv,gtr,positive,not tested,,,,Young
+55,prof. dr. qamruzzaman chowdhury,1,2021-01-04,2021-07-13,6.333333333333333,5.5 x 5.0 cm,male,55.868493150684934,occipital,central,gbm,grade iv,gtr,not tested,not tested,,,,Young
+56,prof. dr. qamruzzaman chowdhury,1,2021-02-06,2024-06-30,41.333333333333336,4.5x3.2x3 cm,female,60.8027397260274,fronto-temporal,left,astrocytoma,grade iv,gtr,positive,positive,,positive,tmz,Senior Adult
+58,dr. md. arifur rahman,1,2016-11-04,2021-05-11,54.96666666666667,,male,45.71506849315068,parietal,left,astrocytoma,grade ii,gtr,not tested,not tested,,,tmz,Young
+59,prof. dr. qamruzzaman chowdhury,1,2020-10-31,2023-12-31,38.53333333333333,,male,34.06575342465754,parietal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+60,dr. md. arifur rahman,1,2021-02-28,2024-06-04,39.733333333333334,5 x 6.4 cm,male,38.14520547945205,frontal,right,astrocytoma,grade ii,ntr,positive,positive,,positive,,Young
+61,prof. dr. qamruzzaman chowdhury,1,2021-03-31,2021-09-09,5.4,,female,61.827397260273976,temporal,right,astrocytoma,grade iv,ntr,positive,positive,,positive,,Senior Adult
+65,dr. md. arifur rahman,0,2021-09-02,2024-06-30,34.4,7.5x4.5x5.5cm,male,20.542465753424658,insular,left,astrocytoma,grade ii,str,not tested,positive,,,tmz,Young
+66,prof. dr. qamruzzaman chowdhury,0,2021-12-27,2024-06-30,30.533333333333335,3.2 cm x 2.9 cm,male,34.038356164383565,parietal,left,oligodendroglioma,grade iii,gtr,not tested,not tested,,,,Young
+67,prof. dr. qamruzzaman chowdhury,1,2021-07-06,2022-12-31,18.1,,male,46.084931506849315,temporal,right,astrocytoma,grade iii,gtr,not tested,not tested,,,,Young
+68,prof. dr. qamruzzaman chowdhury,0,2021-07-10,2024-06-30,36.2,59 x 44 mm,male,43.323287671232876,frontal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+70,prof. dr. qamruzzaman chowdhury,0,2021-07-18,2024-06-30,35.93333333333333,7.2x6.0x5.2cm,male,27.22739726027397,occipital,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+71,prof. dr. qamruzzaman chowdhury,1,2021-08-28,2022-12-17,15.866666666666667,5.8 cm x 3 cm,male,39.41917808219178,parietal,right,gbm,grade iv,gtr,not tested,not tested,,,tmz,Young
+72,prof. dr. qamruzzaman chowdhury,1,2021-07-14,2023-12-13,29.4,45x39mm,female,51.38082191780822,insular,right,astrocytoma,grade iv,str,positive,positive,,negative,,Young
+73,prof. dr. qamruzzaman chowdhury,1,2019-07-28,2024-01-31,54.93333333333333,24 x 15 mm,female,45.827397260273976,fronto-temporal,right,gbm,grade iv,gtr,not tested,not tested,,positive,tmz,Young
+74,dr. md. arifur rahman,1,2021-10-19,2023-08-07,21.9,,male,32.47397260273973,parietal,left,astrocytoma,grade ii,gtr,positive,positive,,,,Young
+75,dr. md. arifur rahman,1,2021-08-16,2021-11-06,2.7333333333333334,3.9x3.2x3.7cm,female,27.46849315068493,parietal,right,astrocytoma,grade ii,gtr,not tested,positive,,negative,,Young
+76,dr. md. arifur rahman,1,2021-10-27,2022-02-26,4.066666666666666,,male,46.89041095890411,temporo-occipital,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+78,dr. md. arifur rahman,0,2021-11-01,2024-06-30,32.4,,female,34.62191780821918,choroidal,central,ependymoma,grade ii,ntr,not tested,not tested,,,,Young
+79,dr. md. arifur rahman,0,2021-11-15,2024-06-30,31.933333333333334,,male,47.71506849315068,frontal,right,oligodendroglioma,grade ii,gtr,not tested,not tested,,,,Young
+80,prof. dr. qamruzzaman chowdhury,1,2021-11-17,2024-06-30,31.866666666666667,,male,43.23835616438356,frontal,right,oligodendroglioma,grade ii,gtr,not tested,positive,,positive,tmz,Young
+81,prof. dr. qamruzzaman chowdhury,1,2021-12-09,2023-10-12,22.4,,male,52.48219178082192,temporal,right,astrocytoma,grade iv,gtr,positive,positive,,negative,,Young
+82,prof. dr. qamruzzaman chowdhury,0,2021-10-24,2024-06-30,32.666666666666664,,female,52.02191780821918,spinal,spinal,ependymoma,grade ii,gtr,not tested,not tested,,,,Young
+83,prof. dr. qamruzzaman chowdhury,1,2021-12-13,2022-03-30,3.566666666666667,,male,67.57534246575342,parieto-occipital,right,gbm,grade iv,str,positive,negative,,negative,,Senior Adult
+84,dr. md. arifur rahman,1,2021-12-20,2022-01-06,0.5666666666666667,,male,52.52602739726027,frontal,left,gbm,grade iv,ntr,not tested,not tested,,,,Young
+85,dr. md. arifur rahman,1,2022-01-23,2022-02-16,0.8,,male,41.74794520547945,frontal,right,oligodendroglioma,grade ii,ntr,not tested,not tested,,,,Young
+86,prof. dr. qamruzzaman chowdhury,0,2022-02-03,2024-06-30,29.266666666666666,6x12mm,male,28.515068493150686,spinal,spinal,gbm,grade iv,gtr,positive,negative,,negative,,Young
+87,dr. md. arifur rahman,1,2021-09-21,2023-03-13,17.933333333333334,(25 x 15 x 15) mm,male,30.526027397260275,temporal,right,astrocytoma,grade iv,biopsy,not tested,positive,,,tmz,Young
+88,prof. dr. qamruzzaman chowdhury,1,2021-12-15,2022-08-04,7.733333333333333,2.9 x 1.8 x 2.7 cm,male,61.43287671232877,temporal,right,gbm,grade iv,str,not tested,negative,,positive,,Senior Adult
+89,prof. dr. qamruzzaman chowdhury,0,2022-01-20,2024-06-30,29.733333333333334,3.29x2.75cm,male,47.38630136986301,frontal,left,astrocytoma,grade ii,gtr,positive,negative,,,,Young
+90,prof. dr. qamruzzaman chowdhury,0,2022-03-08,2024-06-30,28.166666666666668,,male,43.8986301369863,occipital,left,ependymoma,grade ii,ntr,positive,not tested,,,,Young
+93,dr. md. arifur rahman,1,2022-04-23,2023-12-01,19.566666666666666,3.49x3.26 cm,male,57.8054794520548,parietal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+94,dr. ferdous ara begum,1,2022-03-30,2022-12-31,9.2,,male,71.35068493150685,temporal,right,gbm,grade iv,biopsy,not tested,not tested,,,,Senior Adult
+95,prof. dr. qamruzzaman chowdhury,1,2022-05-24,2022-12-13,6.766666666666667,,male,59.52602739726027,parietal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+96,prof. dr. qamruzzaman chowdhury,1,2022-06-09,2022-12-17,6.366666666666666,,male,64.11780821917809,temporal,right,gbm,grade iv,gtr,positive,negative,,,,Senior Adult
+97,dr. md. arifur rahman,1,2022-06-29,2024-06-30,24.4,,female,56.32876712328767,frontal,left,oligodendroglioma,grade iii,gtr,not tested,not tested,,,tmz,Young
+98,dr. md. arifur rahman,1,2022-07-05,2023-11-16,16.633333333333333,,male,38.515068493150686,temporal,left,gbm,grade iv,gtr,positive,negative,,negative,tmz,Young
+99,dr. md. arifur rahman,1,2022-07-23,2022-08-24,1.0666666666666667,,male,49.558904109589044,spinal,spinal,ependymoma,grade ii,gtr,not tested,not tested,,,,Young
+101,prof. dr. qamruzzaman chowdhury,1,2022-08-14,2023-02-19,6.3,,female,59.62739726027397,parietal,left,gbm,grade iv,gtr,positive,negative,,,,Young
+103,prof. dr. qamruzzaman chowdhury,0,2022-11-18,2024-06-30,19.666666666666668,,male,37.635616438356166,frontal,left,astrocytoma,grade iii,str,positive,negative,,,tmz,Young
+104,dr. ferdous ara begum,1,2022-06-20,2023-03-28,9.366666666666667,5.7x5.3 cm,male,58.893150684931506,temporo-parietal,left,gbm,grade iv,str,not tested,negative,,,tmz,Young
+105,prof. dr. qamruzzaman chowdhury,1,2022-12-26,2024-02-28,14.3,,male,55.92602739726028,temporal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+106,prof. dr. qamruzzaman chowdhury,0,2022-12-18,2024-06-30,18.666666666666668,6.5x 4.0x5.0cm,female,42.446575342465756,temporal,right,astrocytoma,grade iii,ntr,positive,positive,,negative,,Young
+107,prof. dr. qamruzzaman chowdhury,1,2023-02-05,2024-06-09,16.333333333333332,(8x 5)cm,male,66.77260273972603,frontal,left,gbm,grade iii,gtr,positive,positive,,,tmz,Senior Adult
+108,prof. dr. qamruzzaman chowdhury,1,2023-02-26,2023-06-30,4.133333333333334,5.0 cm x 4.1 cm x 4.7 cm,male,63.52602739726027,occipital,right,gbm,grade iv,gtr,not tested,not tested,,,,Senior Adult
+109,prof. dr. qamruzzaman chowdhury,0,2023-03-12,2024-06-30,15.866666666666667,2.5 cm x 2.13 cm x2.20 cm,male,42.43287671232877,parietal,right,gbm,grade iv,gtr,negative,negative,,negative,,Young
+110,prof. dr. qamruzzaman chowdhury,0,2022-05-01,2024-06-30,26.366666666666667,,female,40.26575342465753,parietal,left,oligodendroglioma,grade ii,gtr,not tested,not tested,,,,Young
+111,prof. dr. qamruzzaman chowdhury,1,2023-03-22,2023-11-18,8.033333333333333,2.4 x 2.7 x 2.2 cm,female,60.31780821917808,temporal,right,gbm,grade iv,gtr,not tested,not tested,,,,Senior Adult
+112,prof. dr. qamruzzaman chowdhury,1,2023-03-18,2023-09-26,6.4,,male,58.68767123287671,fronto-parietal,left,gbm,grade iv,gtr,not tested,not tested,,,,Young
+113,prof. dr. qamruzzaman chowdhury,0,2023-04-13,2024-06-30,14.8,,female,32.69041095890411,parietal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+114,dr. md. arifur rahman,1,2023-04-16,2024-06-30,14.7,,male,50.24109589041096,temporal,right,astrocytoma,grade ii,biopsy,not tested,negative,,,,Young
+115,prof. dr. qamruzzaman chowdhury,1,2022-11-28,2023-10-26,11.066666666666666,5.4x4.4x5.7cm,male,46.33150684931507,fronto-temporal,right,gbm,grade iv,str,not tested,negative,,,tmz,Young
+116,prof. dr. qamruzzaman chowdhury,1,2023-04-26,2023-11-03,6.366666666666666,5.0x4.5cm,male,66.21369863013699,temporal,right,gbm,grade iv,gtr,not tested,not tested,,,,Senior Adult
+117,prof. dr. qamruzzaman chowdhury,1,2023-02-18,2023-10-24,8.266666666666667,,female,55.20821917808219,frontal,right,gbm,grade iv,gtr,not tested,not tested,,,,Young
+118,prof. dr. qamruzzaman chowdhury,1,2023-05-02,2023-05-16,0.4666666666666667,,male,76.15616438356165,insular,right,gbm,grade iv,gtr,not tested,not tested,,,,Senior Adult
+119,dr. md. arifur rahman,1,2023-05-19,2023-08-09,2.7333333333333334,,male,61.62191780821918,temporo-parietal,left,astrocytoma,grade iv,ntr,not tested,not tested,,,,Senior Adult
+120,dr. md. arifur rahman,1,2022-12-05,2023-10-27,10.866666666666667,4.3 x 3.7 x 2.7cm,male,38.15890410958904,parietal,left,gbm,grade iv,gtr,not tested,not tested,,x,tmz,Young
+121,prof. dr. qamruzzaman chowdhury,1,2020-11-18,2023-11-30,36.9,5.7 x 4.6 cm,male,49.298630136986304,temporo-parietal,right,gbm,grade iv,str,positive,not tested,,,,Young
+122,dr. md. arifur rahman,1,2023-05-25,2023-06-04,0.3333333333333333,2.0 x 3.9 cm,female,25.167123287671235,temporo-parietal,left,astrocytoma,grade iv,gtr,positive,positive,,,,Young
+123,dr. md. arifur rahman,1,2022-04-22,2023-11-20,19.233333333333334,left frontal 3.5 x3.4 x 4.2 cm; right 3 x 2.1 x 1.9 cm,male,56.18630136986302,parietal,left,astrocytoma,grade iii,gtr,not tested,not tested,,,"tmz upto january2023 (8 cycles)> now on 2ndline with irinotecan +bevacizumab (india),c1d1received on 9.06.2023, c4completed on 22.07.2023",Young
+124,prof. dr. qamruzzaman chowdhury,0,2021-04-21,2024-06-30,38.86666666666667,,male,18.01095890410959,occipital,central,ependymoma,grade ii,str,not tested,not tested,,,,Young
+125,prof. dr. qamruzzaman chowdhury,1,2023-04-05,2023-06-30,2.8666666666666667,,male,59.66301369863014,parietal,right,gbm,grade iv,gtr,positive,negative,,,,Young
+126,prof. dr. qamruzzaman chowdhury,1,2021-07-22,2024-04-30,33.766666666666666,,male,55.0,temporo-parietal,left,gbm,grade iv,gtr,not tested,not tested,,,tmz,Young
+127,prof. dr. qamruzzaman chowdhury,0,2023-05-27,2024-06-30,13.333333333333334,,male,20.56986301369863,spinal,spinal,ependymoma,grade ii,gtr,not tested,not tested,,,,Young
+128,prof. dr. qamruzzaman chowdhury,1,2023-04-07,2024-04-14,12.433333333333334,,female,42.605479452054794,parietal,left,gbm,grade iv,gtr,not tested,not tested,,,tmz,Young
+129,prof. dr. qamruzzaman chowdhury,0,2023-08-12,2024-06-30,10.766666666666667,,female,50.04657534246575,temporal,left,gbm,grade ii,gtr,positive,negative,,negative,,Young
+131,dr. md. arifur rahman,0,2023-09-04,2024-06-30,10.0,,male,37.30684931506849,frontal,right,astrocytoma,grade iii,gtr,not tested,positive,,,,Young
+132,prof. dr. qamruzzaman chowdhury,0,2023-09-03,2024-06-30,10.033333333333333,,male,19.043835616438358,parietal,left,astrocytoma,grade ii,gtr,not tested,not tested,,,,Young
+133,prof. dr. qamruzzaman chowdhury,0,2021-11-23,2024-06-30,31.666666666666668,5.6x4.8x4.7 cm,male,59.797260273972604,fronto-parietal,right,gbm,grade iv,str,not tested,not tested,,,tmz on 2021,Young
+135,prof. dr. qamruzzaman chowdhury,0,2023-10-23,2024-06-30,8.366666666666667,,female,67.38356164383562,temporal,left,gbm,grade iv,gtr,positive,negative,,,tmz,Senior Adult
+136,dr. md. arifur rahman,1,2023-10-02,2024-05-28,7.966666666666667,6.6 x 4.7 x 5.1 cm,female,43.175342465753424,frontal,right,gbm,grade iii,gtr,not tested,positive,,,tmz,Young
+140,prof. dr. qamruzzaman chowdhury,1,2018-05-21,2023-11-11,66.66666666666667,,male,33.26575342465753,insular,right,astrocytoma,grade iii,str,not tested,positive,,,tmz,Young
+141,prof. dr. qamruzzaman chowdhury,0,2019-04-25,2024-06-30,63.1,,male,60.33698630136986,frontal,right,oligodendroglioma,grade iii,gtr,not tested,positive,,,,Senior Adult
+142,dr. md. arifur rahman,1,2020-11-11,2021-06-30,7.7,,female,56.25205479452055,temporal,right,gbm,grade iv,gtr,positive,negative,,,,Young
+143,prof. dr. qamruzzaman chowdhury,1,2018-09-24,2020-12-31,27.633333333333333,7.7x6.4x4.5cm,female,63.04109589041096,temporal,left,gbm,grade iv,gtr,not tested,not tested,,,tmz,Senior Adult
+144,prof. dr. qamruzzaman chowdhury,1,2018-09-26,2022-12-31,51.9,5 cm x 5.5 cm x 6.5 cm,male,28.10958904109589,temporal,right,gbm,grade iv,gtr,not tested,not tested,,negative,,Young
+145,prof. dr. qamruzzaman chowdhury,1,2018-11-20,2019-09-30,10.466666666666667,,male,30.78082191780822,temporal,left,astrocytoma,grade ii,ntr,not tested,not tested,,,,Young
+146,prof. dr. qamruzzaman chowdhury,1,2018-12-06,2022-04-14,40.833333333333336,,male,34.945205479452056,chiasmatic,right,gbm,grade iv,biopsy,not tested,not tested,,,tmz,Young
+148,prof. dr. qamruzzaman chowdhury,0,2022-09-13,2024-06-30,21.866666666666667,,female,45.54794520547945,parieto-occipital,right,gbm,grade iv,biopsy,not tested,negative,,x,x,Young
+151,prof. dr. qamruzzaman chowdhury,0,2022-05-10,2024-06-30,26.066666666666666,,male,54.26301369863014,parietal,right,gbm,grade iv,gtr,positive,negative,positive,positive,tmz,Young
+154,prof. dr. qamruzzaman chowdhury,0,2022-11-01,2024-06-30,20.233333333333334,,male,56.778082191780825,temporo-parietal,right,gbm,grade iv,gtr,not tested,not tested,x,x,tmz,Young
+159,dr. md. arifur rahman,1,2023-09-05,2024-06-30,9.966666666666667,5.6x4.0x3.6cm,male,63.53150684931507,temporal,left,gbm,grade iv,gtr,not tested,negative,x,negative,x,Senior Adult
+161,prof. dr. qamruzzaman chowdhury,0,2023-10-04,2024-06-30,9.0,,male,27.65753424657534,frontal,right,astrocytoma,grade ii,gtr,not tested,positive,x,x,tmz,Young
+165,prof. dr. qamruzzaman chowdhury,1,2020-09-15,2020-10-19,1.1333333333333333,,female,69.6054794520548,frontal,left,gbm,grade ii,gtr,positive,positive,negative,negative,x,Senior Adult
+166,dr. md. arifur rahman,0,2020-10-28,2024-06-30,44.7,1.5x1cm,female,50.1013698630137,cerebrum,central,astrocytoma,grade ii,biopsy,positive,positive,negative,positive,x,Young
+167,dr. md. arifur rahman,1,2021-11-03,2022-08-25,9.833333333333334,?,male,61.30958904109589,occipital,right,gbm,grade iv,gtr,not tested,not tested,x,x,tmz,Senior Adult
+168,dr. md. arifur rahman,1,2022-07-05,2023-12-11,17.466666666666665,4.2x3.8x4.1 cm,female,51.106849315068494,frontal,right,gbm,grade iv,gtr,positive,negative,negative,negative,tmz,Young

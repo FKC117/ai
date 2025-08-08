@@ -6,12 +6,23 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
-from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference, AnalysisHistory, UserWarningPreference
+from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference, AnalysisHistory, UserWarningPreference, ReportDocument, ReportSection, ChatMessage
 import pandas as pd
 import numpy as np
 import json
 import os
 from datetime import datetime
+from io import BytesIO
+from django.http import HttpResponse
+
+try:
+    from docx import Document
+    from docx.shared import Inches, Pt
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    from docx.shared import RGBColor
+    DOCX_AVAILABLE = True
+except Exception:
+    DOCX_AVAILABLE = False
 
 # Create your views here.
 def home(request):
@@ -652,75 +663,211 @@ def get_warning_preferences(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def send_chat_message(request):
-    """Handle AI chat messages"""
+    """Handle AI chat messages and store conversation history"""
     try:
         data = json.loads(request.body)
-        message = data.get('message')
+        message = data.get('message', '').strip()
+        dataset_id = data.get('dataset_id')
         session_id = data.get('session_id')
-        context = data.get('context', {})
         
-        if not message:
-            return JsonResponse({'error': 'Message is required'}, status=400)
+        if not message or not dataset_id:
+            return JsonResponse({'error': 'Message and dataset_id are required'}, status=400)
         
-        # Import AI components
-        from .ai.tool_executor import ToolExecutor
-        from .ai.conversation_manager import ConversationManager
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
         
-        # Check if user is asking about data interpretation
-        message_lower = message.lower()
-        interpretation_keywords = ['what do you think', 'interpret', 'analysis', 'insights', 'observations', 'thoughts']
-        is_interpretation_request = any(keyword in message_lower for keyword in interpretation_keywords)
-        
-        # If we have dataset_id, fetch summary statistics (for any data-related question)
-        if context.get('dataset_id'):
+        # Get or create session
+        session = None
+        if session_id:
             try:
-                dataset_id = context['dataset_id']
-                dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
-                
-                # Get summary statistics
-                summary_stats = get_summary_statistics_data(dataset_id)
-                
-                # Add summary statistics to context
-                context['summary_statistics'] = summary_stats
-                context['dataset_name'] = dataset.name
-                context['dataset_info'] = {
-                    'name': dataset.name,
-                    'rows': dataset.rows,
-                    'columns': dataset.columns,
-                    'numeric_columns': dataset.numeric_columns,
-                    'categorical_columns': dataset.categorical_columns
-                }
-                
-            except UserDataset.DoesNotExist:
-                return JsonResponse({'error': 'Dataset not found'}, status=404)
-            except Exception as e:
-                return JsonResponse({'error': f'Error fetching summary statistics: {str(e)}'}, status=500)
+                session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
+            except (ValueError, AnalysisSession.DoesNotExist):
+                pass
         
-        # Initialize tool executor
-        tool_executor = ToolExecutor()
+        if not session:
+            session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).first()
+            if not session:
+                session = AnalysisSession.objects.create(
+                    user=request.user,
+                    dataset=dataset,
+                    session_name=f"Chat Session for {dataset.name}"
+                )
         
-        # Process the message with AI
-        result = tool_executor.process_chat_message(
-            user_id=request.user.id,
-            message=message,
-            session_id=session_id,
-            context=context
+        # Store user message
+        user_message = ChatMessage.objects.create(
+            session=session,
+            message_type='user',
+            content=message
         )
         
-        if result.get('error'):
-            return JsonResponse({'error': result['error']}, status=500)
+        # Get summary statistics for context
+        summary_data = get_summary_statistics_data(dataset_id)
+        
+        # Prepare context for AI
+        context = {
+            'dataset_name': dataset.name,
+            'dataset_rows': dataset.rows,
+            'dataset_columns': dataset.columns,
+            'summary_statistics': summary_data,
+            'user_message': message,
+            'dataset_info': {
+                'rows': dataset.rows,
+                'columns': dataset.columns,
+                'name': dataset.name
+            }
+        }
+        
+        # Get previous chat messages for context
+        previous_messages = ChatMessage.objects.filter(session=session).order_by('created_at')[:10]
+        chat_history = []
+        for msg in previous_messages:
+            if msg.message_type == 'user':
+                chat_history.append(f"User: {msg.content}")
+            else:
+                chat_history.append(f"AI: {msg.content}")
+        
+        context['chat_history'] = '\n'.join(chat_history[-6:])  # Last 6 messages for context
+        
+        # Use the actual AI client
+        try:
+            from .ai.llm_client import LLMClient
+            llm_client = LLMClient()
+            
+            # Build the full message with context
+            full_message = f"""
+User Query: {message}
+
+Dataset Information:
+- Name: {dataset.name}
+- Rows: {dataset.rows:,}
+- Columns: {dataset.columns}
+
+Previous Chat History:
+{context['chat_history']}
+
+Please provide a comprehensive analysis based on the user's query and the dataset information provided.
+"""
+            
+            ai_response = llm_client.chat(full_message, context)
+            
+        except Exception as ai_error:
+            print(f"AI Error: {ai_error}")
+            # Fallback to basic response if AI fails
+            ai_response = f"I'm analyzing your dataset '{dataset.name}' with {dataset.rows:,} rows and {dataset.columns} columns. Here's what I found:\n\n"
+            
+            # Add some intelligent response based on the message
+            if 'summary' in message.lower() or 'statistics' in message.lower():
+                ai_response += "## Summary Statistics Overview\n\n"
+                ai_response += f"- **Total Variables**: {len(summary_data.get('variable_summary', {}))}\n"
+                ai_response += f"- **Numeric Variables**: {summary_data.get('dataset_overview', {}).get('numeric_columns', 0)}\n"
+                ai_response += f"- **Categorical Variables**: {summary_data.get('dataset_overview', {}).get('categorical_columns', 0)}\n\n"
+                
+                # Add some variable insights
+                var_summary = summary_data.get('variable_summary', {})
+                if var_summary:
+                    ai_response += "## Key Variable Insights\n\n"
+                    for i, (var_name, var_data) in enumerate(list(var_summary.items())[:5]):
+                        if var_data.get('type') == 'numeric':
+                            ai_response += f"- **{var_name}**: Mean = {var_data.get('mean', 'N/A'):.2f}, Std = {var_data.get('std', 'N/A'):.2f}\n"
+                        else:
+                            ai_response += f"- **{var_name}**: {var_data.get('unique_count', 'N/A')} unique values\n"
+            
+            elif 'quality' in message.lower() or 'missing' in message.lower():
+                ai_response += "## Data Quality Analysis\n\n"
+                dq = summary_data.get('data_quality', {})
+                if dq:
+                    for var_name, var_stats in list(dq.items())[:5]:
+                        missing_pct = var_stats.get('missing_percentage', 0)
+                        ai_response += f"- **{var_name}**: {missing_pct:.1%} missing values\n"
+            
+            elif 'correlation' in message.lower():
+                ai_response += "## Correlation Analysis\n\n"
+                corr = summary_data.get('correlation_matrix', {})
+                if corr and corr.get('strong_correlations'):
+                    ai_response += "Strong correlations found:\n"
+                    for corr_item in corr['strong_correlations'][:3]:
+                        ai_response += f"- **{corr_item['variable1']}** ↔ **{corr_item['variable2']}**: {corr_item['correlation']:.3f}\n"
+                else:
+                    ai_response += "No strong correlations detected in the dataset.\n"
+            
+            else:
+                ai_response += "I can help you analyze your dataset! Here are some things you can ask me about:\n\n"
+                ai_response += "- **Summary statistics** and key insights\n"
+                ai_response += "- **Data quality** and missing value analysis\n"
+                ai_response += "- **Correlation analysis** between variables\n"
+                ai_response += "- **Distribution patterns** and outliers\n"
+                ai_response += "- **Recommendations** for further analysis\n\n"
+                ai_response += "What specific aspect would you like me to focus on?"
+        
+        # Store AI response
+        ai_message = ChatMessage.objects.create(
+            session=session,
+            message_type='ai',
+            content=ai_response
+        )
         
         return JsonResponse({
             'success': True,
-            'response': result['response'],
-            'tool_executed': result.get('tool_executed'),
-            'metadata': result.get('metadata', {})
+            'response': ai_response,
+            'session_id': session.id,
+            'message_id': ai_message.id
         })
         
-    except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
     except Exception as e:
-        return JsonResponse({'error': f'Error processing chat message: {str(e)}'}, status=500)
+        return JsonResponse({'error': f'Error processing message: {str(e)}'}, status=500)
+
+
+@login_required
+def get_chat_history(request):
+    """Retrieve chat history for a specific session"""
+    try:
+        dataset_id = request.GET.get('dataset_id')
+        session_id = request.GET.get('session_id')
+        
+        if not dataset_id:
+            return JsonResponse({'error': 'Dataset ID is required'}, status=400)
+        
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        
+        # Get session
+        session = None
+        if session_id:
+            try:
+                session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
+            except (ValueError, AnalysisSession.DoesNotExist):
+                pass
+        
+        if not session:
+            session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).first()
+        
+        if not session:
+            return JsonResponse({'messages': [], 'session_id': None})
+        
+        # Get chat messages for this session
+        messages = ChatMessage.objects.filter(session=session).order_by('created_at')
+        
+        chat_history = []
+        for message in messages:
+            chat_history.append({
+                'id': message.id,
+                'type': message.message_type,
+                'content': message.content,
+                'created_at': message.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_added_to_report': message.is_added_to_report,
+                'report_section_id': message.report_section.id if message.report_section else None
+            })
+        
+        return JsonResponse({
+            'messages': chat_history,
+            'session_id': session.id,
+            'session_name': session.session_name
+        })
+        
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error retrieving chat history: {str(e)}'}, status=500)
 
 def get_summary_statistics_data(dataset_id):
     """Get summary statistics data for a dataset"""
@@ -873,3 +1020,433 @@ def get_summary_statistics_data(dataset_id):
     except Exception as e:
         print(f"Error in get_summary_statistics_data: {str(e)}")
         raise Exception(f"Error calculating summary statistics: {str(e)}")
+
+
+@login_required
+@csrf_exempt
+@require_http_methods(["POST"])
+def add_to_report(request):
+    """Append the latest AI response or summary block to the user's report for current session/dataset"""
+    try:
+        if not DOCX_AVAILABLE:
+            return JsonResponse({'error': 'python-docx is not installed on the server'}, status=500)
+
+        data = json.loads(request.body)
+        dataset_id = data.get('dataset_id')
+        session_id = data.get('session_id')
+        title = data.get('title', 'Analysis Section')
+        content = data.get('content', '')
+        section_type = data.get('section_type', 'ai_response')
+        metadata = data.get('metadata', {})
+
+        print(f"DEBUG: add_to_report called with dataset_id={dataset_id}, session_id={session_id}, section_type={section_type}")
+
+        if not dataset_id or not session_id:
+            return JsonResponse({'error': 'dataset_id and session_id are required'}, status=400)
+
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        # Resolve session: accept numeric ID or fallback to active session
+        resolved_session = None
+        try:
+            resolved_session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
+            print(f"DEBUG: Found session with ID {session_id}")
+        except Exception as e:
+            print(f"DEBUG: Session not found with ID {session_id}, error: {str(e)}")
+            # Fallback to active/latest session for this user+dataset
+            resolved_session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).order_by('-updated_at').first()
+            if not resolved_session:
+                resolved_session = AnalysisSession.objects.create(user=request.user, dataset=dataset, session_name=f"Analysis of {dataset.name}")
+                print(f"DEBUG: Created new session with ID {resolved_session.id}")
+
+        document, _ = ReportDocument.objects.get_or_create(user=request.user, dataset=dataset, session=resolved_session)
+        print(f"DEBUG: Using document {document.id}")
+
+        # Determine order
+        last_section = document.sections.order_by('-order').first()
+        next_order = (last_section.order + 1) if last_section else 1
+
+        # If summary_statistics and no content provided, auto-generate a concise markdown block
+        if (section_type == 'summary_statistics') and (not content):
+            try:
+                stats = get_summary_statistics_data(dataset.id)
+                ov = stats.get('dataset_overview', {})
+                # Build comprehensive summary with all sections
+                content_parts = []
+                
+                # 1. Dataset Overview
+                content_parts.append(f"## Dataset Overview\n")
+                content_parts.append(f"Total Rows: {ov.get('total_rows', 'N/A')} | Total Columns: {ov.get('total_columns', 'N/A')}\n")
+                
+                # 2. Data Quality Report
+                dq = stats.get('data_quality', {})
+                if dq:
+                    content_parts.append(f"## Data Quality Report\n")
+                    for var_name, var_stats in dq.items():
+                        missing_pct = var_stats.get('missing_percentage', 0)
+                        completeness = var_stats.get('completeness', 0)
+                        quality_score = var_stats.get('quality_score', 0)
+                        content_parts.append(f"- **{var_name}**: Missing {missing_pct:.1%}, Completeness {completeness:.1%}, Quality Score {quality_score:.1f}\n")
+                
+                # 3. Distribution Insights
+                di = stats.get('distribution_insights', {})
+                if di:
+                    content_parts.append(f"## Distribution Insights\n")
+                    content_parts.append(f"- Skewed Variables: {di.get('skewed_variables', 0)}\n")
+                    content_parts.append(f"- Normal Distribution: {di.get('normal_distribution', 0)}\n")
+                    content_parts.append(f"- High Variance: {di.get('high_variance', 0)}\n")
+                    content_parts.append(f"- Zero Variance: {di.get('zero_variance', 0)}\n")
+                
+                # 4. Variable Summary Table (all variables, properly formatted)
+                content_parts.append(f"## Variable Summary Table\n")
+                var_items = list(stats.get('variable_summary', {}).items())
+                if var_items:
+                    # Header row
+                    table_rows = ['| Variable | Type | Count | Mean | Std | Min | 25% | Median | 75% | Max |']
+                    table_rows.append('|---------|------|-------|------|-----|-----|-----|--------|-----|-----|')
+                    
+                    for name, meta in var_items:
+                        if meta.get('type') == 'numeric':
+                            # Format numeric values, handle None/N/A
+                            mean_val = meta.get('mean', 'N/A')
+                            std_val = meta.get('std', 'N/A')
+                            min_val = meta.get('min', 'N/A')
+                            q25_val = meta.get('q25', 'N/A')
+                            median_val = meta.get('median', 'N/A')
+                            q75_val = meta.get('q75', 'N/A')
+                            max_val = meta.get('max', 'N/A')
+                            
+                            # Format numbers if they exist
+                            if isinstance(mean_val, (int, float)): mean_val = f"{mean_val:.2f}"
+                            if isinstance(std_val, (int, float)): std_val = f"{std_val:.2f}"
+                            if isinstance(min_val, (int, float)): min_val = f"{min_val:.2f}"
+                            if isinstance(q25_val, (int, float)): q25_val = f"{q25_val:.2f}"
+                            if isinstance(median_val, (int, float)): median_val = f"{median_val:.2f}"
+                            if isinstance(q75_val, (int, float)): q75_val = f"{q75_val:.2f}"
+                            if isinstance(max_val, (int, float)): max_val = f"{max_val:.2f}"
+                            
+                            row = f"| {name} | numeric | {meta.get('count', 'N/A')} | {mean_val} | {std_val} | {min_val} | {q25_val} | {median_val} | {q75_val} | {max_val} |"
+                        else:
+                            # Categorical variables
+                            unique_count = meta.get('unique_count', 'N/A')
+                            most_common = meta.get('most_common', 'N/A')
+                            most_common_count = meta.get('most_common_count', 'N/A')
+                            row = f"| {name} | categorical | {meta.get('count', 'N/A')} | {unique_count} unique | {most_common} ({most_common_count}) |  |  |  |  |  |"
+                        table_rows.append(row)
+                    
+                    content_parts.append('\n'.join(table_rows))
+                
+                # 5. Correlation Matrix (if available)
+                corr = stats.get('correlation_matrix', {})
+                if corr and corr.get('strong_correlations'):
+                    content_parts.append(f"\n## Strong Correlations\n")
+                    for corr_item in corr['strong_correlations']:
+                        content_parts.append(f"- **{corr_item['variable1']}** ↔ **{corr_item['variable2']}**: {corr_item['correlation']:.3f}\n")
+                
+                content = (
+                    '\n\n'.join(content_parts)
+                )
+            except Exception:
+                # Fallback to minimal message
+                content = 'Summary statistics added.'
+
+        # Create the report section
+        report_section = ReportSection.objects.create(
+            document=document,
+            order=next_order,
+            title=title,
+            content=content,
+            section_type=section_type,
+            metadata=metadata
+        )
+
+        # If this is an AI response being added, link it to the chat message
+        if section_type == 'ai_response' and data.get('message_id'):
+            try:
+                message_id = data.get('message_id')
+                chat_message = ChatMessage.objects.get(id=message_id, session=resolved_session)
+                chat_message.is_added_to_report = True
+                chat_message.report_section = report_section
+                chat_message.save()
+            except ChatMessage.DoesNotExist:
+                pass  # Ignore if message not found
+
+        return JsonResponse({'success': True, 'message': 'Added to report', 'section_order': next_order})
+
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except AnalysisSession.DoesNotExist:
+        return JsonResponse({'error': 'Session not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error adding to report: {str(e)}'}, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def download_report(request):
+    """Compile the stored report sections into a nicely formatted DOCX and return as download"""
+    try:
+        if not DOCX_AVAILABLE:
+            return JsonResponse({'error': 'python-docx is not installed on the server'}, status=500)
+
+        dataset_id = request.GET.get('dataset_id')
+        session_id = request.GET.get('session_id')
+        if not dataset_id or not session_id:
+            return JsonResponse({'error': 'dataset_id and session_id are required'}, status=400)
+
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        # Resolve session: accept numeric ID or fallback to active session
+        try:
+            session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
+        except Exception:
+            session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).order_by('-updated_at').first()
+            if not session:
+                return JsonResponse({'error': 'No active session found for this dataset'}, status=404)
+        document_obj = ReportDocument.objects.filter(user=request.user, dataset=dataset, session=session).first()
+
+        if not document_obj:
+            return JsonResponse({'error': 'No report content to download yet'}, status=404)
+
+        # Build DOCX
+        doc = Document()
+
+        # Apply custom styles to match DataFlow Analytics design
+        from docx.shared import RGBColor, Inches
+        from docx.enum.text import WD_ALIGN_PARAGRAPH
+        from docx.oxml.shared import OxmlElement, qn
+
+        # Title with DataFlow Analytics branding
+        title_paragraph = doc.add_paragraph()
+        title_run = title_paragraph.add_run("DataFlow Analytics Report")
+        title_run.font.name = 'Inter'
+        title_run.font.size = Pt(28)
+        title_run.font.bold = True
+        title_run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+        title_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Subtitle
+        subtitle_paragraph = doc.add_paragraph()
+        subtitle_run = subtitle_paragraph.add_run("Advanced Data Analysis & Insights")
+        subtitle_run.font.name = 'Inter'
+        subtitle_run.font.size = Pt(14)
+        subtitle_run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
+        subtitle_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
+        # Add a decorative line
+        doc.add_paragraph('')
+
+        # Dataset Information Card
+        info_paragraph = doc.add_paragraph()
+        info_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        # Dataset name with primary color
+        dataset_name_run = info_paragraph.add_run(f"Dataset: {dataset.name}")
+        dataset_name_run.font.name = 'Inter'
+        dataset_name_run.font.size = Pt(16)
+        dataset_name_run.font.bold = True
+        dataset_name_run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+        
+        info_paragraph.add_run("\n")
+        
+        # Dataset stats with secondary color
+        stats_run = info_paragraph.add_run(f"Rows: {dataset.rows:,} | Columns: {dataset.columns} | Size: {dataset.file_size or 'N/A'}")
+        stats_run.font.name = 'Inter'
+        stats_run.font.size = Pt(12)
+        stats_run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+        
+        info_paragraph.add_run("\n")
+        
+        # Upload and generation dates
+        date_run = info_paragraph.add_run(f"Uploaded: {dataset.uploaded_at.strftime('%B %d, %Y at %I:%M %p')}")
+        date_run.font.name = 'Inter'
+        date_run.font.size = Pt(10)
+        date_run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
+        
+        date_run = info_paragraph.add_run(f" | Generated: {datetime.now().strftime('%B %d, %Y at %I:%M %p')}")
+        date_run.font.name = 'Inter'
+        date_run.font.size = Pt(10)
+        date_run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
+
+        doc.add_paragraph('')
+
+        # Sections - smart ordering by type first, then by order/created_at
+        type_priority = {
+            'summary_statistics': 10,
+            'data_quality': 20,
+            'correlation': 30,
+            'outlier_analysis': 40,
+            'visualization': 50,
+            'ai_response': 90,
+        }
+
+        sections = list(document_obj.sections.all())
+        sections.sort(key=lambda s: (type_priority.get(s.section_type, 80), s.order, s.created_at))
+
+        for section in sections:
+            # Section header with DataFlow styling
+            heading = doc.add_heading(section.title, level=2)
+            heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            
+            # Style the heading
+            for run in heading.runs:
+                run.font.name = 'Inter'
+                run.font.size = Pt(18)
+                run.font.bold = True
+                run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+
+            content = section.content or ''
+
+            # Enhanced table parsing from markdown with DataFlow styling
+            lines = content.splitlines()
+            table_rows = [l for l in lines if l.strip().startswith('|') and l.strip().endswith('|')]
+            if table_rows:
+                # Build table from detected rows
+                parsed_rows = []
+                for row in table_rows:
+                    cells = [c.strip() for c in row.strip('|').split('|')]
+                    parsed_rows.append(cells)
+                if parsed_rows:
+                    table = doc.add_table(rows=len(parsed_rows), cols=len(parsed_rows[0]))
+                    table.style = 'Table Grid'
+                    
+                    # Apply DataFlow table styling
+                    for r_idx, row_cells in enumerate(parsed_rows):
+                        for c_idx, cell_text in enumerate(row_cells):
+                            cell = table.cell(r_idx, c_idx)
+                            cell.text = str(cell_text)
+                            
+                            # Style header row with primary color
+                            if r_idx == 0:
+                                for paragraph in cell.paragraphs:
+                                    for run in paragraph.runs:
+                                        run.font.name = 'Inter'
+                                        run.font.bold = True
+                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
+                                        run.font.size = Pt(11)
+                                # Header background
+                                cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                            else:
+                                # Regular row styling
+                                for paragraph in cell.paragraphs:
+                                    for run in paragraph.runs:
+                                        run.font.name = 'Inter'
+                                        run.font.size = Pt(10)
+                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                
+                                # Alternate row background
+                                if r_idx % 2 == 1:
+                                    cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                    cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                    
+                    # Auto-fit column widths
+                    for column in table.columns:
+                        column.width = Inches(1.5)
+                
+                # Add remaining non-table text with proper formatting
+                non_table_lines = [l for l in lines if l not in table_rows and l.strip()]
+                if non_table_lines:
+                    for line in non_table_lines:
+                        line = line.strip()
+                        if line.startswith('##'):
+                            # Section subheader
+                            subheading = doc.add_heading(line.replace('##', '').strip(), level=3)
+                            for run in subheading.runs:
+                                run.font.name = 'Inter'
+                                run.font.size = Pt(14)
+                                run.font.bold = True
+                                run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+                        elif line.startswith('- **'):
+                            # Bullet point with bold
+                            p = doc.add_paragraph()
+                            p.style = 'List Bullet'
+                            run = p.add_run(line.replace('- **', '').replace('**', ''))
+                            run.font.name = 'Inter'
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+                        elif line.startswith('- '):
+                            # Regular bullet point
+                            p = doc.add_paragraph()
+                            p.style = 'List Bullet'
+                            run = p.add_run(line.replace('- ', ''))
+                            run.font.name = 'Inter'
+                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                        elif line.strip():
+                            # Regular paragraph
+                            p = doc.add_paragraph(line)
+                            for run in p.runs:
+                                run.font.name = 'Inter'
+                                run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+            else:
+                # Plain paragraph content with markdown formatting
+                paragraphs = content.split('\n\n')
+                for para in paragraphs:
+                    para = para.strip()
+                    if para.startswith('##'):
+                        # Section subheader
+                        subheading = doc.add_heading(para.replace('##', '').strip(), level=3)
+                        for run in subheading.runs:
+                            run.font.name = 'Inter'
+                            run.font.size = Pt(14)
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+                    elif para.startswith('- **'):
+                        # Bullet point with bold
+                        p = doc.add_paragraph()
+                        p.style = 'List Bullet'
+                        run = p.add_run(para.replace('- **', '').replace('**', ''))
+                        run.font.name = 'Inter'
+                        run.font.bold = True
+                        run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+                    elif para.startswith('- '):
+                        # Regular bullet point
+                        p = doc.add_paragraph()
+                        p.style = 'List Bullet'
+                        run = p.add_run(para.replace('- ', ''))
+                        run.font.name = 'Inter'
+                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                    elif para.strip():
+                        # Regular paragraph
+                        p = doc.add_paragraph(para)
+                        for run in p.runs:
+                            run.font.name = 'Inter'
+                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+
+            doc.add_paragraph('')
+
+        # Footer with DataFlow branding
+        footer_paragraph = doc.add_paragraph()
+        footer_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        
+        footer_run = footer_paragraph.add_run("Generated by DataFlow Analytics")
+        footer_run.font.name = 'Inter'
+        footer_run.font.size = Pt(10)
+        footer_run.font.italic = True
+        footer_run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
+        
+        footer_paragraph.add_run(" | ")
+        
+        footer_run = footer_paragraph.add_run("Advanced AI-Powered Data Analysis")
+        footer_run.font.name = 'Inter'
+        footer_run.font.size = Pt(10)
+        footer_run.font.italic = True
+        footer_run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+
+        # Stream the document
+        buffer = BytesIO()
+        doc.save(buffer)
+        buffer.seek(0)
+
+        filename = f"DataFlow_Report_{dataset.id}_{session.id}.docx"
+        response = HttpResponse(
+            buffer.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+        )
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except AnalysisSession.DoesNotExist:
+        return JsonResponse({'error': 'Session not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating report: {str(e)}'}, status=500)

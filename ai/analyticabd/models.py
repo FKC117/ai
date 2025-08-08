@@ -155,3 +155,57 @@ class UserWarningPreference(models.Model):
     
     def __str__(self):
         return f"{self.user.username} - Warning Preferences"
+
+
+class ReportDocument(models.Model):
+    """Stores a user's report for a specific dataset and analysis session"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='reports')
+    dataset = models.ForeignKey(UserDataset, on_delete=models.CASCADE, related_name='reports')
+    session = models.ForeignKey(AnalysisSession, on_delete=models.CASCADE, related_name='reports')
+    title = models.CharField(max_length=255, default='DataFlow Analytics Report')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-updated_at']
+        unique_together = ['user', 'dataset', 'session']
+
+    def __str__(self):
+        return f"Report: {self.title} ({self.user.username} / {self.dataset.name})"
+
+
+class ReportSection(models.Model):
+    """A section within a report document (e.g., AI interpretation, summary stats)"""
+    document = models.ForeignKey(ReportDocument, on_delete=models.CASCADE, related_name='sections')
+    order = models.IntegerField(default=0)
+    title = models.CharField(max_length=255)
+    content = models.TextField()  # Store markdown/plain text from AI
+    content_type = models.CharField(max_length=32, default='markdown')  # markdown | text | html
+    section_type = models.CharField(max_length=64, default='ai_response')  # ai_response | summary_statistics | custom
+    metadata = models.JSONField(default=dict, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['order', 'created_at']
+
+    def __str__(self):
+        return f"{self.document.title} - Section {self.order}: {self.title}"
+
+
+class ChatMessage(models.Model):
+    """Store chat messages for each analysis session"""
+    session = models.ForeignKey(AnalysisSession, on_delete=models.CASCADE, related_name='chat_messages')
+    message_type = models.CharField(max_length=20, choices=[
+        ('user', 'User Message'),
+        ('ai', 'AI Response')
+    ])
+    content = models.TextField()
+    is_added_to_report = models.BooleanField(default=False)
+    report_section = models.ForeignKey(ReportSection, on_delete=models.SET_NULL, null=True, blank=True, related_name='chat_message')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+
+    def __str__(self):
+        return f"{self.session.session_name} - {self.message_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
