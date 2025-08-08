@@ -47,6 +47,10 @@
     /* Chat content resizing */
     .chat-content-resizable {
         transition: all 0.2s ease-out;
+        word-wrap: break-word;
+        overflow-wrap: break-word;
+        hyphens: auto;
+        max-width: 100%;
     }
     
     .chat-message-expanded {
@@ -104,6 +108,7 @@
         border-collapse: collapse;
         width: 100%;
         margin: 0.5rem 0;
+        font-size: 0.875rem;
     }
     
     .chat-content-resizable table td {
@@ -112,7 +117,8 @@
         text-align: left;
         vertical-align: top;
         word-wrap: break-word;
-        max-width: 200px;
+        overflow-wrap: break-word;
+        max-width: none;
     }
     
     .chat-content-resizable table tr:first-child td {
@@ -2549,7 +2555,7 @@
                             <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                         </svg>
                     </div>
-                    <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                    <div class="w-full max-w-full bg-white rounded-lg p-3 shadow-sm border border-gray-200 chat-content-resizable">
                         <p class="text-sm text-text-primary">👋 Hello! I'm your AI analytics assistant. I can help you interpret your data, explain patterns, and suggest insights. Upload a dataset and click "Pass Data to AI" to get started!</p>
                     </div>
                 `;
@@ -2568,6 +2574,7 @@
                     return;
                 }
                 
+                console.log('=== AI CHAT DEBUG START ===');
                 console.log('Sending message:', message);
                 console.log('Current dataset ID:', window.currentDatasetId);
                 console.log('Current session ID:', window.currentSessionId);
@@ -2583,7 +2590,7 @@
                         session_id: window.currentSessionId
                     };
                     
-                    console.log('Sending payload:', payload);
+                    console.log('Sending payload to backend:', payload);
                     
                     const response = await fetch('/api/v1/chat/send_message/', {
                         method: 'POST',
@@ -2594,26 +2601,45 @@
                         body: JSON.stringify(payload)
                     });
                     
-                    console.log('Response status:', response.status);
+                    console.log('Backend response status:', response.status);
+                    console.log('Backend response headers:', Object.fromEntries(response.headers.entries()));
                     
                     if (response.ok) {
                         const data = await response.json();
-                        console.log('Response data:', data);
+                        console.log('✅ AI Response received:', data);
+                        console.log('AI Response content length:', data.response?.length || 0);
+                        console.log('Session ID from response:', data.session_id);
+                        console.log('Message ID from response:', data.message_id);
+                        
                         addChatMessage(data.response, 'ai', data.message_id, false);
                         
                         // Update session ID if we got one
                         if (data.session_id) {
                             window.currentSessionId = data.session_id;
+                            console.log('Updated session ID to:', window.currentSessionId);
                         }
+                        
+                        console.log('=== AI CHAT DEBUG SUCCESS ===');
                     } else {
                         const errorText = await response.text();
-                        console.error('Response error:', errorText);
+                        console.error('❌ Backend error response:', errorText);
+                        console.error('Response status:', response.status);
+                        console.error('Response headers:', Object.fromEntries(response.headers.entries()));
+                        
                         const error = await response.json().catch(() => ({ error: 'Failed to send message' }));
+                        console.error('Parsed error:', error);
                         alert(error.error || 'Failed to send message');
+                        
+                        console.log('=== AI CHAT DEBUG ERROR ===');
                     }
                 } catch (error) {
-                    console.error('Error sending message:', error);
+                    console.error('❌ Exception in sendMessage:', error);
+                    console.error('Error name:', error.name);
+                    console.error('Error message:', error.message);
+                    console.error('Error stack:', error.stack);
                     alert('Failed to send message: ' + error.message);
+                    
+                    console.log('=== AI CHAT DEBUG EXCEPTION ===');
                 }
             };
             
@@ -2629,22 +2655,6 @@
                     const url = `/api/v1/report/download?dataset_id=${encodeURIComponent(currentDatasetId)}&session_id=${encodeURIComponent(currentSessionId)}`;
                     window.open(url, '_blank');
                 });
-            }
-            
-            // Helper function to get CSRF token
-            function getCookie(name) {
-                let cookieValue = null;
-                if (document.cookie && document.cookie !== '') {
-                    const cookies = document.cookie.split(';');
-                    for (let i = 0; i < cookies.length; i++) {
-                        const cookie = cookies[i].trim();
-                        if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                            break;
-                        }
-                    }
-                }
-                return cookieValue;
             }
             
             // Initialize chat on page load
@@ -2667,20 +2677,20 @@
             if (addSummaryBtn && !addSummaryBtn.dataset.bound) {
                 addSummaryBtn.dataset.bound = '1';
                 addSummaryBtn.addEventListener('click', async () => {
-                    if (!currentDatasetId || !currentSessionId) {
+                    if (!window.currentDatasetId || !window.currentSessionId) {
                         alert('Please select a dataset first.');
                         return;
                     }
                     try {
-                        const res = await fetch(`/api/summary-statistics/${currentDatasetId}/`);
+                        const res = await fetch(`/api/summary-statistics/${window.currentDatasetId}/`);
                         if (!res.ok) throw new Error('Failed to load summary');
                         const summaryData = await res.json();
                         // cache for later if needed
                         window.__lastSummaryData = summaryData;
 
                         const payload = {
-                            dataset_id: currentDatasetId,
-                            session_id: currentSessionId,
+                            dataset_id: window.currentDatasetId,
+                            session_id: window.currentSessionId,
                             title: 'Summary Statistics',
                             content: '', // let backend generate clean markdown
                             section_type: 'summary_statistics',
@@ -3014,7 +3024,7 @@
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                        <div class="w-full max-w-full bg-white rounded-lg p-3 shadow-sm border border-gray-200 chat-content-resizable">
                             <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
                         </div>
                     `;
@@ -3042,7 +3052,7 @@
                                 <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
                             </svg>
                         </div>
-                        <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
+                        <div class="w-full max-w-full bg-white rounded-lg p-3 shadow-sm border border-gray-200 chat-content-resizable">
                             <p class="text-sm text-text-primary">⚠️ Please upload a dataset first before passing data to AI.</p>
                         </div>
                     `;
@@ -3105,6 +3115,22 @@
             }).join('');
             
             return formattedParagraphs;
+        }
+        
+        // Helper function to get CSRF token - globally accessible
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
         }
         
         // D3.js Chart Implementation
@@ -3258,10 +3284,10 @@
             messageDiv.className = `flex ${sender === 'user' ? 'justify-end' : 'justify-start'} mb-4`;
             
             const messageContent = document.createElement('div');
-            messageContent.className = `max-w-xs lg:max-w-md xl:max-w-lg 2xl:max-w-xl px-4 py-2 rounded-lg ${
+            messageContent.className = `w-full max-w-full px-4 py-3 rounded-lg shadow-sm border ${
                 sender === 'user' 
-                    ? 'bg-primary text-white' 
-                    : 'bg-gray-100 text-gray-800'
+                    ? 'bg-primary text-white border-primary-dark' 
+                    : 'bg-white text-gray-800 border-gray-200'
             }`;
             
             if (sender === 'ai') {
@@ -3283,7 +3309,14 @@
                     const addBtn = messageContent.querySelector('button[data-role="add-to-report"]');
                     if (addBtn && messageId) {
                         addBtn.addEventListener('click', async () => {
+                            console.log('=== ADD TO REPORT DEBUG START ===');
+                            console.log('Add to report button clicked');
+                            console.log('Message ID:', messageId);
+                            console.log('Current dataset ID:', window.currentDatasetId);
+                            console.log('Current session ID:', window.currentSessionId);
+                            
                             if (!window.currentDatasetId || !window.currentSessionId) {
+                                console.log('❌ Missing dataset or session ID');
                                 alert('Please select a dataset first.');
                                 return;
                             }
@@ -3298,24 +3331,41 @@
                                     message_id: messageId
                                 };
                                 
+                                console.log('Adding to report with payload:', payload);
+                                
                                 const res = await fetch('/api/v1/report/add/', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
                                     body: JSON.stringify(payload)
                                 });
                                 
+                                console.log('Add to report response status:', res.status);
+                                console.log('Add to report response headers:', Object.fromEntries(res.headers.entries()));
+                                
                                 if (res.ok) {
+                                    const responseData = await res.json();
+                                    console.log('✅ Add to report success:', responseData);
                                     addBtn.textContent = 'Added';
                                     addBtn.disabled = true;
                                     addBtn.style.backgroundColor = '#10b981';
                                     addBtn.style.borderColor = '#059669';
+                                    console.log('=== ADD TO REPORT DEBUG SUCCESS ===');
                                 } else {
+                                    const errorText = await res.text();
+                                    console.error('❌ Add to report error response:', errorText);
+                                    console.error('Response status:', res.status);
                                     const err = await res.json().catch(() => ({ error: 'Failed to add to report' }));
+                                    console.error('Parsed error:', err);
                                     alert(err.error || 'Failed to add to report');
+                                    console.log('=== ADD TO REPORT DEBUG ERROR ===');
                                 }
                             } catch (e) {
-                                console.error(e);
-                                alert('Failed to add to report');
+                                console.error('❌ Exception in add to report:', e);
+                                console.error('Error name:', e.name);
+                                console.error('Error message:', e.message);
+                                console.error('Error stack:', e.stack);
+                                alert('Failed to add to report: ' + e.message);
+                                console.log('=== ADD TO REPORT DEBUG EXCEPTION ===');
                             }
                         });
                     }

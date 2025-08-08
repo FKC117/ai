@@ -664,33 +664,44 @@ def get_warning_preferences(request):
 @require_http_methods(["POST"])
 def send_chat_message(request):
     """Handle AI chat messages and store conversation history"""
+    print("=== BACKEND AI CHAT DEBUG START ===")
     try:
         data = json.loads(request.body)
         message = data.get('message', '').strip()
         dataset_id = data.get('dataset_id')
         session_id = data.get('session_id')
         
+        print(f"Received request - Message: '{message[:50]}...' | Dataset ID: {dataset_id} | Session ID: {session_id}")
+        
         if not message or not dataset_id:
+            print("❌ Validation failed - missing message or dataset_id")
             return JsonResponse({'error': 'Message and dataset_id are required'}, status=400)
         
+        print(f"✅ Validation passed - processing dataset {dataset_id}")
         dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        print(f"✅ Dataset found: {dataset.name} ({dataset.rows} rows, {dataset.columns} columns)")
         
         # Get or create session
         session = None
         if session_id:
             try:
                 session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
-            except (ValueError, AnalysisSession.DoesNotExist):
+                print(f"✅ Found existing session: {session.id}")
+            except (ValueError, AnalysisSession.DoesNotExist) as e:
+                print(f"⚠️ Session not found with ID {session_id}: {e}")
                 pass
         
         if not session:
             session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).first()
-            if not session:
+            if session:
+                print(f"✅ Found active session: {session.id}")
+            else:
                 session = AnalysisSession.objects.create(
                     user=request.user,
                     dataset=dataset,
                     session_name=f"Chat Session for {dataset.name}"
                 )
+                print(f"✅ Created new session: {session.id}")
         
         # Store user message
         user_message = ChatMessage.objects.create(
@@ -698,9 +709,12 @@ def send_chat_message(request):
             message_type='user',
             content=message
         )
+        print(f"✅ Stored user message: {user_message.id}")
         
         # Get summary statistics for context
+        print("📊 Getting summary statistics...")
         summary_data = get_summary_statistics_data(dataset_id)
+        print(f"✅ Summary data retrieved - {len(summary_data.get('variable_summary', {}))} variables")
         
         # Prepare context for AI
         context = {
@@ -726,11 +740,14 @@ def send_chat_message(request):
                 chat_history.append(f"AI: {msg.content}")
         
         context['chat_history'] = '\n'.join(chat_history[-6:])  # Last 6 messages for context
+        print(f"✅ Chat history prepared - {len(chat_history)} previous messages")
         
         # Use the actual AI client
+        print("🤖 Initializing AI client...")
         try:
             from .ai.llm_client import LLMClient
             llm_client = LLMClient()
+            print("✅ AI client initialized successfully")
             
             # Build the full message with context
             full_message = f"""
@@ -746,11 +763,17 @@ Previous Chat History:
 
 Please provide a comprehensive analysis based on the user's query and the dataset information provided.
 """
+            print(f"📝 Sending message to AI (length: {len(full_message)} chars)")
             
             ai_response = llm_client.chat(full_message, context)
+            print(f"✅ AI response received (length: {len(ai_response)} chars)")
+            print(f"AI response preview: {ai_response[:200]}...")
             
         except Exception as ai_error:
-            print(f"AI Error: {ai_error}")
+            print(f"❌ AI Error: {ai_error}")
+            print(f"AI Error type: {type(ai_error).__name__}")
+            print(f"AI Error details: {str(ai_error)}")
+            
             # Fallback to basic response if AI fails
             ai_response = f"I'm analyzing your dataset '{dataset.name}' with {dataset.rows:,} rows and {dataset.columns} columns. Here's what I found:\n\n"
             
@@ -797,6 +820,8 @@ Please provide a comprehensive analysis based on the user's query and the datase
                 ai_response += "- **Distribution patterns** and outliers\n"
                 ai_response += "- **Recommendations** for further analysis\n\n"
                 ai_response += "What specific aspect would you like me to focus on?"
+            
+            print(f"✅ Fallback response generated (length: {len(ai_response)} chars)")
         
         # Store AI response
         ai_message = ChatMessage.objects.create(
@@ -804,17 +829,30 @@ Please provide a comprehensive analysis based on the user's query and the datase
             message_type='ai',
             content=ai_response
         )
+        print(f"✅ Stored AI message: {ai_message.id}")
         
-        return JsonResponse({
+        response_data = {
             'success': True,
             'response': ai_response,
             'session_id': session.id,
             'message_id': ai_message.id
-        })
+        }
+        print(f"✅ Sending response - Session ID: {session.id}, Message ID: {ai_message.id}")
+        print("=== BACKEND AI CHAT DEBUG SUCCESS ===")
+        
+        return JsonResponse(response_data)
         
     except UserDataset.DoesNotExist:
+        print("❌ Dataset not found")
+        print("=== BACKEND AI CHAT DEBUG ERROR ===")
         return JsonResponse({'error': 'Dataset not found'}, status=404)
     except Exception as e:
+        print(f"❌ Unexpected error: {e}")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error details: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        print("=== BACKEND AI CHAT DEBUG ERROR ===")
         return JsonResponse({'error': f'Error processing message: {str(e)}'}, status=500)
 
 
