@@ -3291,27 +3291,72 @@
             }`;
             
             if (sender === 'ai') {
-                // Format AI response with markdown-like formatting
-                const formattedContent = formatAIResponse(content);
-                messageContent.innerHTML = formattedContent;
-                
-                // Extract tables and images for report inclusion
+                // Extract tables and images for report inclusion BEFORE formatting
                 let reportData = {
                     content: content,
                     tables: [],
                     images: []
                 };
                 
-                // Extract tables from the formatted content
+                // Extract markdown tables from the original content FIRST
+                const lines = content.split('\n');
+                let currentTable = [];
+                let tableIndex = 0;
+                
+                for (let i = 0; i < lines.length; i++) {
+                    const line = lines[i].trim();
+                    if (line.match(/^\|(.+)\|$/)) {
+                        // This is a table row
+                        currentTable.push(line);
+                    } else if (line.match(/^\|(\s*[-:]+\s*\|)+$/)) {
+                        // This is a table separator (dashes)
+                        currentTable.push(line);
+                    } else if (currentTable.length > 0) {
+                        // End of table, process it
+                        if (currentTable.length > 1) { // At least header + separator
+                            const tableText = currentTable.join('\n');
+                            const tableData = {
+                                id: `markdown_table_${Date.now()}_${tableIndex}`,
+                                markdown: tableText,
+                                text: tableText,
+                                type: 'markdown'
+                            };
+                            reportData.tables.push(tableData);
+                            console.log(`📊 Extracted markdown table ${tableIndex + 1}:`, tableData);
+                            tableIndex++;
+                        }
+                        currentTable = [];
+                    }
+                }
+                
+                // Process any remaining table
+                if (currentTable.length > 1) {
+                    const tableText = currentTable.join('\n');
+                    const tableData = {
+                        id: `markdown_table_${Date.now()}_${tableIndex}`,
+                        markdown: tableText,
+                        text: tableText,
+                        type: 'markdown'
+                    };
+                    reportData.tables.push(tableData);
+                    console.log(`📊 Extracted markdown table ${tableIndex + 1}:`, tableData);
+                }
+                
+                // Now format the AI response
+                const formattedContent = formatAIResponse(content);
+                messageContent.innerHTML = formattedContent;
+                
+                // Extract HTML tables from the formatted content (in case there are any)
                 const tableElements = messageContent.querySelectorAll('table');
                 tableElements.forEach((table, index) => {
                     const tableData = {
-                        id: `table_${Date.now()}_${index}`,
+                        id: `html_table_${Date.now()}_${index}`,
                         html: table.outerHTML,
-                        text: table.textContent.trim()
+                        text: table.textContent.trim(),
+                        type: 'html'
                     };
                     reportData.tables.push(tableData);
-                    console.log(`📊 Extracted table ${index + 1}:`, tableData);
+                    console.log(`📊 Extracted HTML table ${index + 1}:`, tableData);
                 });
                 
                 // Extract images (if any are added in the future)

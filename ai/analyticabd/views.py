@@ -1353,54 +1353,114 @@ def download_report(request):
             # Process tables from AI responses first
             for i, table_data in enumerate(tables_data):
                 try:
-                    print(f"📊 Adding table {i+1} from AI response")
-                    # Parse the HTML table and add it to the document
-                    from bs4 import BeautifulSoup
-                    soup = BeautifulSoup(table_data['html'], 'html.parser')
-                    table = soup.find('table')
+                    print(f"📊 Adding table {i+1} from AI response (type: {table_data.get('type', 'unknown')})")
                     
-                    if table:
-                        # Create a new table in the document
-                        rows = table.find_all('tr')
-                        if rows:
-                            doc_table = doc.add_table(rows=len(rows), cols=len(rows[0].find_all(['td', 'th'])))
-                            doc_table.style = 'Table Grid'
+                    if table_data.get('type') == 'markdown':
+                        # Handle markdown table
+                        markdown_text = table_data.get('markdown', '')
+                        lines = markdown_text.split('\n')
+                        parsed_rows = []
+                        
+                        for line in lines:
+                            if line.strip().startswith('|') and line.strip().endswith('|'):
+                                # Remove leading/trailing | and split by |
+                                cells = [cell.strip() for cell in line.strip('|').split('|')]
+                                parsed_rows.append(cells)
+                        
+                        if parsed_rows and len(parsed_rows) > 1:  # At least header + data
+                            # Skip separator row (dashes)
+                            data_rows = [row for row in parsed_rows if not all(cell.replace('-', '').replace(':', '').strip() == '' for cell in row)]
                             
-                            for r_idx, row in enumerate(rows):
-                                cells = row.find_all(['td', 'th'])
-                                for c_idx, cell in enumerate(cells):
-                                    if c_idx < len(doc_table.rows[r_idx].cells):
-                                        doc_cell = doc_table.rows[r_idx].cells[c_idx]
-                                        doc_cell.text = cell.get_text(strip=True)
-                                        
-                                        # Style the cell
-                                        for paragraph in doc_cell.paragraphs:
-                                            for run in paragraph.runs:
-                                                run.font.name = 'Inter'
-                                                run.font.size = Pt(10)
-                                                if r_idx == 0:  # Header row
-                                                    run.font.bold = True
-                                                    run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-                                                    doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                    doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
-                                                else:
-                                                    run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                                                    if r_idx % 2 == 1:  # Alternating rows
+                            if data_rows:
+                                doc_table = doc.add_table(rows=len(data_rows), cols=len(data_rows[0]))
+                                doc_table.style = 'Table Grid'
+                                
+                                for r_idx, row_cells in enumerate(data_rows):
+                                    for c_idx, cell_text in enumerate(row_cells):
+                                        if c_idx < len(doc_table.rows[r_idx].cells):
+                                            doc_cell = doc_table.rows[r_idx].cells[c_idx]
+                                            doc_cell.text = cell_text
+                                            
+                                            # Style the cell
+                                            for paragraph in doc_cell.paragraphs:
+                                                for run in paragraph.runs:
+                                                    run.font.name = 'Inter'
+                                                    run.font.size = Pt(10)
+                                                    if r_idx == 0:  # Header row
+                                                        run.font.bold = True
+                                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
                                                         doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                                    else:
+                                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                                        if r_idx % 2 == 1:  # Alternating rows
+                                                            doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
                                 
                                 # Auto-fit column widths
                                 for column in doc_table.columns:
                                     column.width = Inches(1.5)
                                 
                                 doc.add_paragraph('')  # Add space after table
-                                print(f"✅ Added table {i+1} successfully")
+                                print(f"✅ Added markdown table {i+1} successfully")
+                            else:
+                                print(f"⚠️ No valid data rows found in markdown table {i+1}")
                         else:
-                            print(f"⚠️ No rows found in table HTML for table {i+1}")
+                            print(f"⚠️ Invalid markdown table format for table {i+1}")
+                    
+                    elif table_data.get('type') == 'html':
+                        # Handle HTML table (existing code)
+                        from bs4 import BeautifulSoup
+                        soup = BeautifulSoup(table_data['html'], 'html.parser')
+                        table = soup.find('table')
+                        
+                        if table:
+                            # Create a new table in the document
+                            rows = table.find_all('tr')
+                            if rows:
+                                doc_table = doc.add_table(rows=len(rows), cols=len(rows[0].find_all(['td', 'th'])))
+                                doc_table.style = 'Table Grid'
+                                
+                                for r_idx, row in enumerate(rows):
+                                    cells = row.find_all(['td', 'th'])
+                                    for c_idx, cell in enumerate(cells):
+                                        if c_idx < len(doc_table.rows[r_idx].cells):
+                                            doc_cell = doc_table.rows[r_idx].cells[c_idx]
+                                            doc_cell.text = cell.get_text(strip=True)
+                                            
+                                            # Style the cell
+                                            for paragraph in doc_cell.paragraphs:
+                                                for run in paragraph.runs:
+                                                    run.font.name = 'Inter'
+                                                    run.font.size = Pt(10)
+                                                    if r_idx == 0:  # Header row
+                                                        run.font.bold = True
+                                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
+                                                        doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                                    else:
+                                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                                        if r_idx % 2 == 1:  # Alternating rows
+                                                            doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                                
+                                # Auto-fit column widths
+                                for column in doc_table.columns:
+                                    column.width = Inches(1.5)
+                                
+                                doc.add_paragraph('')  # Add space after table
+                                print(f"✅ Added HTML table {i+1} successfully")
+                            else:
+                                print(f"⚠️ No rows found in table HTML for table {i+1}")
+                        else:
+                            print(f"⚠️ No table tag found in HTML for table {i+1}")
                     else:
-                        print(f"⚠️ No table tag found in HTML for table {i+1}")
+                        print(f"⚠️ Unknown table type for table {i+1}: {table_data.get('type')}")
+                        
                 except Exception as e:
                     print(f"❌ Error adding table {i+1}: {e}")
+                    import traceback
+                    print(f"Traceback: {traceback.format_exc()}")
             
             # Process images from AI responses
             for i, image_data in enumerate(images_data):
