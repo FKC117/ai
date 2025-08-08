@@ -14,6 +14,8 @@ import os
 from datetime import datetime
 from io import BytesIO
 from django.http import HttpResponse
+import re
+from bs4 import BeautifulSoup
 
 try:
     from docx import Document
@@ -949,7 +951,8 @@ def get_summary_statistics_data(dataset_id):
             'distribution_insights': {},
             'correlation_matrix': {},
             'outlier_analysis': {},
-            'missing_data_analysis': {}
+            'missing_data_analysis': {},
+            'comprehensive_table': {}  # New field for comprehensive table data
         }
         
         # Calculate variable summary with better error handling
@@ -1053,11 +1056,107 @@ def get_summary_statistics_data(dataset_id):
                 'strong_correlations': []
             }
         
+        # Create comprehensive HTML table for summary statistics
+        summary_stats['comprehensive_table'] = create_comprehensive_summary_table(summary_stats)
+        
         return summary_stats
         
     except Exception as e:
         print(f"Error in get_summary_statistics_data: {str(e)}")
         raise Exception(f"Error calculating summary statistics: {str(e)}")
+
+def create_comprehensive_summary_table(summary_stats):
+    """Create a comprehensive HTML table for summary statistics"""
+    try:
+        var_items = list(summary_stats.get('variable_summary', {}).items())
+        if not var_items:
+            return ""
+        
+        # Start building HTML table
+        html_parts = []
+        html_parts.append('<table style="border-collapse: collapse; width: 100%; margin: 10px 0; font-family: Inter, sans-serif;">')
+        html_parts.append('<thead>')
+        html_parts.append('<tr style="background-color: #1a365d; color: white;">')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Variable</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Type</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Count</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Missing %</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Mean</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Std Dev</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Min</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">25th %</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Median</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">75th %</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Max</th>')
+        html_parts.append('<th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Quality Score</th>')
+        html_parts.append('</tr>')
+        html_parts.append('</thead>')
+        html_parts.append('<tbody>')
+        
+        for idx, (name, meta) in enumerate(var_items):
+            # Get data quality info
+            dq_info = summary_stats.get('data_quality', {}).get(name, {})
+            missing_pct = dq_info.get('missing_percentage', 0)
+            quality_score = dq_info.get('quality_score', 1.0)
+            
+            # Determine row background color
+            bg_color = '#f7fafc' if idx % 2 == 1 else '#ffffff'
+            
+            if meta.get('type') == 'numeric':
+                mean_val = meta.get('mean', 'N/A')
+                std_val = meta.get('std', 'N/A')
+                min_val = meta.get('min', 'N/A')
+                q25_val = meta.get('q25', 'N/A')
+                median_val = meta.get('median', 'N/A')
+                q75_val = meta.get('q75', 'N/A')
+                max_val = meta.get('max', 'N/A')
+                
+                # Format numeric values
+                if isinstance(mean_val, (int, float)): mean_val = f"{mean_val:.2f}"
+                if isinstance(std_val, (int, float)): std_val = f"{std_val:.2f}"
+                if isinstance(min_val, (int, float)): min_val = f"{min_val:.2f}"
+                if isinstance(q25_val, (int, float)): q25_val = f"{q25_val:.2f}"
+                if isinstance(median_val, (int, float)): median_val = f"{median_val:.2f}"
+                if isinstance(q75_val, (int, float)): q75_val = f"{q75_val:.2f}"
+                if isinstance(max_val, (int, float)): max_val = f"{max_val:.2f}"
+                
+                html_parts.append(f'<tr style="background-color: {bg_color};">')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">{name}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">numeric</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{meta.get("count", "N/A")}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{missing_pct:.1%}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{mean_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{std_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{min_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{q25_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{median_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{q75_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{max_val}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{quality_score:.2f}</td>')
+                html_parts.append('</tr>')
+            else:
+                unique_count = meta.get('unique_count', 'N/A')
+                most_common = meta.get('most_common', 'N/A')
+                most_common_count = meta.get('most_common_count', 'N/A')
+                
+                html_parts.append(f'<tr style="background-color: {bg_color};">')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px; font-weight: bold;">{name}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">categorical</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{meta.get("count", "N/A")}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{missing_pct:.1%}</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;" colspan="6">{unique_count} unique values</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;" colspan="2">Most common: {most_common} ({most_common_count})</td>')
+                html_parts.append(f'<td style="border: 1px solid #ddd; padding: 8px;">{quality_score:.2f}</td>')
+                html_parts.append('</tr>')
+        
+        html_parts.append('</tbody>')
+        html_parts.append('</table>')
+        
+        return '\n'.join(html_parts)
+        
+    except Exception as e:
+        print(f"Error creating comprehensive summary table: {str(e)}")
+        return ""
 
 
 @login_required
@@ -1140,13 +1239,20 @@ def add_to_report(request):
                     content_parts.append(f"- High Variance: {di.get('high_variance', 0)}\n")
                     content_parts.append(f"- Zero Variance: {di.get('zero_variance', 0)}\n")
                 
-                content_parts.append(f"## Variable Summary Table\n")
+                # Add comprehensive summary data table for all section types
+                content_parts.append(f"## Complete Dataset Summary Table\n")
                 var_items = list(stats.get('variable_summary', {}).items())
                 if var_items:
-                    table_rows = ['| Variable | Type | Count | Mean | Std | Min | 25% | Median | 75% | Max |']
-                    table_rows.append('|---------|------|-------|------|-----|-----|-----|--------|-----|-----|')
+                    # Create a comprehensive table with all statistics
+                    table_rows = ['| Variable | Type | Count | Missing % | Mean | Std Dev | Min | 25th % | Median | 75th % | Max | Skewness | Kurtosis | Quality Score |']
+                    table_rows.append('|----------|------|-------|-----------|------|---------|-----|---------|--------|---------|-----|----------|----------|--------------|')
                     
                     for name, meta in var_items:
+                        # Get data quality info
+                        dq_info = stats.get('data_quality', {}).get(name, {})
+                        missing_pct = dq_info.get('missing_percentage', 0)
+                        quality_score = dq_info.get('quality_score', 1.0)
+                        
                         if meta.get('type') == 'numeric':
                             mean_val = meta.get('mean', 'N/A')
                             std_val = meta.get('std', 'N/A')
@@ -1155,7 +1261,10 @@ def add_to_report(request):
                             median_val = meta.get('median', 'N/A')
                             q75_val = meta.get('q75', 'N/A')
                             max_val = meta.get('max', 'N/A')
+                            skewness = meta.get('skewness', 'N/A')
+                            kurtosis = meta.get('kurtosis', 'N/A')
                             
+                            # Format numeric values
                             if isinstance(mean_val, (int, float)): mean_val = f"{mean_val:.2f}"
                             if isinstance(std_val, (int, float)): std_val = f"{std_val:.2f}"
                             if isinstance(min_val, (int, float)): min_val = f"{min_val:.2f}"
@@ -1163,16 +1272,29 @@ def add_to_report(request):
                             if isinstance(median_val, (int, float)): median_val = f"{median_val:.2f}"
                             if isinstance(q75_val, (int, float)): q75_val = f"{q75_val:.2f}"
                             if isinstance(max_val, (int, float)): max_val = f"{max_val:.2f}"
+                            if isinstance(skewness, (int, float)): skewness = f"{skewness:.2f}"
+                            if isinstance(kurtosis, (int, float)): kurtosis = f"{kurtosis:.2f}"
                             
-                            row = f"| {name} | numeric | {meta.get('count', 'N/A')} | {mean_val} | {std_val} | {min_val} | {q25_val} | {median_val} | {q75_val} | {max_val} |"
+                            row = f"| {name} | numeric | {meta.get('count', 'N/A')} | {missing_pct:.1%} | {mean_val} | {std_val} | {min_val} | {q25_val} | {median_val} | {q75_val} | {max_val} | {skewness} | {kurtosis} | {quality_score:.2f} |"
                         else:
                             unique_count = meta.get('unique_count', 'N/A')
                             most_common = meta.get('most_common', 'N/A')
                             most_common_count = meta.get('most_common_count', 'N/A')
-                            row = f"| {name} | categorical | {meta.get('count', 'N/A')} | {unique_count} unique | {most_common} ({most_common_count}) |  |  |  |  |  |"
+                            row = f"| {name} | categorical | {meta.get('count', 'N/A')} | {missing_pct:.1%} | {unique_count} unique | {most_common} ({most_common_count}) |  |  |  |  |  |  |  | {quality_score:.2f} |"
                         table_rows.append(row)
                     
                     content_parts.append('\n'.join(table_rows))
+                    
+                    # Add correlation summary if available
+                    corr = stats.get('correlation_matrix', {})
+                    if corr and corr.get('strong_correlations'):
+                        content_parts.append(f"\n## Correlation Summary\n")
+                        content_parts.append('| Variable 1 | Variable 2 | Correlation | Strength |')
+                        content_parts.append('|------------|------------|-------------|----------|')
+                        for corr_item in corr['strong_correlations']:
+                            corr_val = corr_item['correlation']
+                            strength = 'Strong' if abs(corr_val) >= 0.8 else 'Moderate' if abs(corr_val) >= 0.6 else 'Weak'
+                            content_parts.append(f"| {corr_item['variable1']} | {corr_item['variable2']} | {corr_val:.3f} | {strength} |")
                 
                 corr = stats.get('correlation_matrix', {})
                 if corr and corr.get('strong_correlations'):
@@ -1190,6 +1312,37 @@ def add_to_report(request):
         if report_data:
             metadata['report_data'] = report_data
             print(f"📊 Stored {len(report_data.get('tables', []))} tables and {len(report_data.get('images', []))} images in metadata")
+        
+        # Auto-extract HTML tables from AI responses if no report_data provided
+        if section_type == 'ai_response' and content and not report_data:
+            extracted_tables = extract_html_tables_from_content(content)
+            if extracted_tables:
+                if 'report_data' not in metadata:
+                    metadata['report_data'] = {}
+                if 'tables' not in metadata['report_data']:
+                    metadata['report_data']['tables'] = []
+                
+                metadata['report_data']['tables'].extend(extracted_tables)
+                print(f"📊 Auto-extracted {len(extracted_tables)} HTML tables from AI response")
+        
+        # Add comprehensive summary table to metadata if this is a summary_statistics section
+        if section_type == 'summary_statistics':
+            try:
+                stats = get_summary_statistics_data(dataset.id)
+                if stats.get('comprehensive_table'):
+                    if 'report_data' not in metadata:
+                        metadata['report_data'] = {}
+                    if 'tables' not in metadata['report_data']:
+                        metadata['report_data']['tables'] = []
+                    
+                    metadata['report_data']['tables'].append({
+                        'type': 'html',
+                        'html': stats['comprehensive_table'],
+                        'title': 'Complete Dataset Summary Table'
+                    })
+                    print(f"📊 Added comprehensive summary table to metadata")
+            except Exception as e:
+                print(f"⚠️ Error adding comprehensive table to metadata: {e}")
 
         report_section = ReportSection.objects.create(
             document=document,
@@ -1350,169 +1503,267 @@ def download_report(request):
             
             print(f"📄 Processing section '{section.title}' with {len(tables_data)} tables and {len(images_data)} images")
             
-            # Process tables from AI responses first
-            for i, table_data in enumerate(tables_data):
+            # For AI responses, preserve the original order by processing content sequentially
+            if section.section_type == 'ai_response':
+                # First, extract and render HTML tables from the content
                 try:
-                    print(f"📊 Adding table {i+1} from AI response (type: {table_data.get('type', 'unknown')})")
+                    soup = BeautifulSoup(content, 'html.parser')
+                    html_tables = soup.find_all('table')
                     
-                    if table_data.get('type') == 'markdown':
-                        # Handle markdown table
-                        markdown_text = table_data.get('markdown', '')
-                        lines = markdown_text.split('\n')
-                        parsed_rows = []
+                    if html_tables:
+                        print(f"📊 Found {len(html_tables)} HTML tables in AI response")
+                        for i, html_table in enumerate(html_tables):
+                            table_data = {
+                                'type': 'html',
+                                'html': str(html_table),
+                                'title': f'Table {i+1}'
+                            }
+                            table_rendered = render_table_from_metadata(table_data)
+                            if table_rendered:
+                                print(f"✅ Successfully rendered HTML table {i+1}")
                         
-                        for line in lines:
-                            if line.strip().startswith('|') and line.strip().endswith('|'):
-                                # Remove leading/trailing | and split by |
-                                cells = [cell.strip() for cell in line.strip('|').split('|')]
-                                parsed_rows.append(cells)
+                        # Remove HTML tables from content for text processing
+                        for table in html_tables:
+                            table.decompose()
                         
-                        if parsed_rows and len(parsed_rows) > 1:  # At least header + data
-                            # Skip separator row (dashes)
-                            data_rows = [row for row in parsed_rows if not all(cell.replace('-', '').replace(':', '').strip() == '' for cell in row)]
+                        # Get the cleaned text content without HTML tables
+                        content = soup.get_text()
+                
+                except Exception as e:
+                    print(f"⚠️ Error processing HTML tables: {e}")
+                
+                # Process remaining content line-by-line in original order, matching tables from metadata when encountered
+                lines = content.splitlines()
+                current_paragraph = []
+                table_index = 0  # Track which table from metadata we're on
+                
+                def render_table_from_metadata(table_data):
+                    """Render a table from metadata with proper styling"""
+                    try:
+                        if table_data.get('type') == 'markdown':
+                            # Handle markdown table
+                            markdown_text = table_data.get('markdown', '')
+                            table_lines = markdown_text.split('\n')
+                            parsed_rows = []
                             
-                            if data_rows:
-                                doc_table = doc.add_table(rows=len(data_rows), cols=len(data_rows[0]))
-                                doc_table.style = 'Table Grid'
+                            for line in table_lines:
+                                if line.strip().startswith('|') and line.strip().endswith('|'):
+                                    # Remove leading/trailing | and split by |
+                                    cells = [cell.strip() for cell in line.strip('|').split('|')]
+                                    parsed_rows.append(cells)
+                            
+                            if parsed_rows and len(parsed_rows) > 1:  # At least header + data
+                                # Skip separator row (dashes)
+                                data_rows = [row for row in parsed_rows if not all(cell.replace('-', '').replace(':', '').strip() == '' for cell in row)]
                                 
-                                for r_idx, row_cells in enumerate(data_rows):
-                                    for c_idx, cell_text in enumerate(row_cells):
-                                        if c_idx < len(doc_table.rows[r_idx].cells):
-                                            doc_cell = doc_table.rows[r_idx].cells[c_idx]
-                                            doc_cell.text = cell_text
-                                            
-                                            # Style the cell
-                                            for paragraph in doc_cell.paragraphs:
-                                                for run in paragraph.runs:
-                                                    run.font.name = 'Inter'
-                                                    run.font.size = Pt(10)
-                                                    if r_idx == 0:  # Header row
-                                                        run.font.bold = True
-                                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-                                                        doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
-                                                    else:
-                                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                                                        if r_idx % 2 == 1:  # Alternating rows
+                                if data_rows:
+                                    doc_table = doc.add_table(rows=len(data_rows), cols=len(data_rows[0]))
+                                    doc_table.style = 'Table Grid'
+                                    
+                                    for r_idx, row_cells in enumerate(data_rows):
+                                        for c_idx, cell_text in enumerate(row_cells):
+                                            if c_idx < len(doc_table.rows[r_idx].cells):
+                                                doc_cell = doc_table.rows[r_idx].cells[c_idx]
+                                                doc_cell.text = cell_text
+                                                
+                                                # Style the cell
+                                                for paragraph in doc_cell.paragraphs:
+                                                    for run in paragraph.runs:
+                                                        run.font.name = 'Inter'
+                                                        run.font.size = Pt(10)
+                                                        if r_idx == 0:  # Header row
+                                                            run.font.bold = True
+                                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White text
                                                             doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
-                                
-                                # Auto-fit column widths
-                                for column in doc_table.columns:
-                                    column.width = Inches(1.5)
-                                
-                                doc.add_paragraph('')  # Add space after table
-                                print(f"✅ Added markdown table {i+1} successfully")
+                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                                        else:
+                                                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                                            if r_idx % 2 == 1:  # Alternating rows
+                                                                doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                                doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
+                                    
+                                    # Auto-fit column widths
+                                    for column in doc_table.columns:
+                                        column.width = Inches(1.5)
+                                    
+                                    doc.add_paragraph('')  # Add space after table
+                                    print(f"✅ Added markdown table from metadata successfully")
+                                    return True
+                                else:
+                                    print(f"⚠️ No valid data rows found in markdown table")
                             else:
-                                print(f"⚠️ No valid data rows found in markdown table {i+1}")
-                        else:
-                            print(f"⚠️ Invalid markdown table format for table {i+1}")
-                    
-                    elif table_data.get('type') == 'html':
-                        # Handle HTML table (existing code)
-                        from bs4 import BeautifulSoup
-                        soup = BeautifulSoup(table_data['html'], 'html.parser')
-                        table = soup.find('table')
+                                print(f"⚠️ Invalid markdown table format")
                         
-                        if table:
-                            # Create a new table in the document
-                            rows = table.find_all('tr')
-                            if rows:
-                                doc_table = doc.add_table(rows=len(rows), cols=len(rows[0].find_all(['td', 'th'])))
-                                doc_table.style = 'Table Grid'
-                                
-                                for r_idx, row in enumerate(rows):
-                                    cells = row.find_all(['td', 'th'])
-                                    for c_idx, cell in enumerate(cells):
-                                        if c_idx < len(doc_table.rows[r_idx].cells):
-                                            doc_cell = doc_table.rows[r_idx].cells[c_idx]
-                                            doc_cell.text = cell.get_text(strip=True)
-                                            
-                                            # Style the cell
-                                            for paragraph in doc_cell.paragraphs:
-                                                for run in paragraph.runs:
-                                                    run.font.name = 'Inter'
-                                                    run.font.size = Pt(10)
-                                                    if r_idx == 0:  # Header row
-                                                        run.font.bold = True
-                                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-                                                        doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                        doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
-                                                    else:
-                                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
-                                                        if r_idx % 2 == 1:  # Alternating rows
+                        elif table_data.get('type') == 'html':
+                            # Handle HTML table with enhanced styling
+                            from bs4 import BeautifulSoup
+                            soup = BeautifulSoup(table_data['html'], 'html.parser')
+                            table = soup.find('table')
+                            
+                            if table:
+                                # Create a new table in the document
+                                rows = table.find_all('tr')
+                                if rows:
+                                    # Determine max columns across all rows
+                                    max_cols = max(len(row.find_all(['td', 'th'])) for row in rows)
+                                    doc_table = doc.add_table(rows=len(rows), cols=max_cols)
+                                    doc_table.style = 'Table Grid'
+                                    
+                                    for r_idx, row in enumerate(rows):
+                                        cells = row.find_all(['td', 'th'])
+                                        for c_idx, cell in enumerate(cells):
+                                            if c_idx < len(doc_table.rows[r_idx].cells):
+                                                doc_cell = doc_table.rows[r_idx].cells[c_idx]
+                                                doc_cell.text = cell.get_text(strip=True)
+                                                
+                                                # Enhanced styling
+                                                for paragraph in doc_cell.paragraphs:
+                                                    for run in paragraph.runs:
+                                                        run.font.name = 'Inter'
+                                                        run.font.size = Pt(9)  # Slightly smaller for better fit
+                                                        
+                                                        # Check if this is a header cell (th tag or first row)
+                                                        is_header = cell.name == 'th' or r_idx == 0
+                                                        
+                                                        if is_header:
+                                                            run.font.bold = True
+                                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White text
                                                             doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # --color-background
-                                
-                                # Auto-fit column widths
-                                for column in doc_table.columns:
-                                    column.width = Inches(1.5)
-                                
-                                doc.add_paragraph('')  # Add space after table
-                                print(f"✅ Added HTML table {i+1} successfully")
+                                                            doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                                        else:
+                                                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                                                            # Alternating row colors
+                                                            if r_idx % 2 == 1:
+                                                                doc_cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                                                doc_cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), 'f7fafc')  # Light background
+                                    
+                                    # Auto-fit column widths based on content
+                                    for column in doc_table.columns:
+                                        column.width = Inches(1.2)  # Slightly narrower for better fit
+                                    
+                                    doc.add_paragraph('')  # Add space after table
+                                    print(f"✅ Added enhanced HTML table from metadata successfully")
+                                    return True
+                                else:
+                                    print(f"⚠️ No rows found in table HTML")
                             else:
-                                print(f"⚠️ No rows found in table HTML for table {i+1}")
+                                print(f"⚠️ No table tag found in HTML")
                         else:
-                            print(f"⚠️ No table tag found in HTML for table {i+1}")
+                            print(f"⚠️ Unknown table type: {table_data.get('type')}")
+                    except Exception as e:
+                        print(f"❌ Error rendering table from metadata: {e}")
+                    
+                    return False
+                
+                def process_paragraph(paragraph_text):
+                    """Process accumulated paragraph text with proper styling"""
+                    if paragraph_text:
+                        if paragraph_text.startswith('##'):
+                            subheading = doc.add_heading(paragraph_text.replace('##', '').strip(), level=3)
+                            for run in subheading.runs:
+                                run.font.name = 'Inter'
+                                run.font.size = Pt(14)
+                                run.font.bold = True
+                                run.font.color.rgb = RGBColor(56, 178, 172)  # --color-secondary
+                        elif paragraph_text.startswith('- **'):
+                            p = doc.add_paragraph()
+                            p.style = 'List Bullet'
+                            run = p.add_run(paragraph_text.replace('- **', '').replace('**', ''))
+                            run.font.name = 'Inter'
+                            run.font.bold = True
+                            run.font.color.rgb = RGBColor(26, 54, 93)  # --color-primary
+                        elif paragraph_text.startswith('- '):
+                            p = doc.add_paragraph()
+                            p.style = 'List Bullet'
+                            run = p.add_run(paragraph_text.replace('- ', ''))
+                            run.font.name = 'Inter'
+                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                        elif paragraph_text.strip():
+                            p = doc.add_paragraph(paragraph_text)
+                            for run in p.runs:
+                                run.font.name = 'Inter'
+                                run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                
+                # Process content line-by-line in original order
+                for line in lines:
+                    line_stripped = line.strip()
+                    
+                    # Check if this line is part of a markdown table
+                    is_table_line = (line_stripped.startswith('|') and line_stripped.endswith('|')) or \
+                                   (line_stripped.replace('-', '').replace(':', '').replace('|', '').strip() == '' and '|' in line_stripped)
+                    
+                    if is_table_line:
+                        # Process any accumulated text first
+                        if current_paragraph:
+                            paragraph_text = '\n'.join(current_paragraph).strip()
+                            process_paragraph(paragraph_text)
+                            current_paragraph = []
+                        
+                        # Try to render table from metadata if available
+                        if table_index < len(tables_data):
+                            table_rendered = render_table_from_metadata(tables_data[table_index])
+                            if table_rendered:
+                                table_index += 1
+                        else:
+                            # Fallback: render as plain text if no metadata table available
+                            p = doc.add_paragraph(line)
+                            for run in p.runs:
+                                run.font.name = 'Inter'
+                                run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
                     else:
-                        print(f"⚠️ Unknown table type for table {i+1}: {table_data.get('type')}")
+                        # If this is a blank line, process accumulated paragraph
+                        if not line_stripped and current_paragraph:
+                            paragraph_text = '\n'.join(current_paragraph).strip()
+                            process_paragraph(paragraph_text)
+                            current_paragraph = []
+                        else:
+                            # Add line to current paragraph
+                            current_paragraph.append(line)
+                
+                # Process any remaining paragraph
+                if current_paragraph:
+                    paragraph_text = '\n'.join(current_paragraph).strip()
+                    process_paragraph(paragraph_text)
+            else:
+                # For non-AI responses, use the original processing logic
+                # Filter out table lines from regular content
+                non_table_lines = []
+                filtered_table_rows = []  # Define the missing variable
+                for line in lines:
+                    if is_table_line(line):
+                        filtered_table_rows.append(line)  # Collect table lines
+                    elif line.strip():
+                        non_table_lines.append(line)
+                
+                if filtered_table_rows:
+                    parsed_rows = []
+                    for row in filtered_table_rows:
+                        cells = [c.strip() for c in row.strip('|').split('|')]
+                        parsed_rows.append(cells)
+                    if parsed_rows:
+                        table = doc.add_table(rows=len(parsed_rows), cols=len(parsed_rows[0]))
+                        table.style = 'Table Grid'
                         
-                except Exception as e:
-                    print(f"❌ Error adding table {i+1}: {e}")
-                    import traceback
-                    print(f"Traceback: {traceback.format_exc()}")
-            
-            # Process images from AI responses
-            for i, image_data in enumerate(images_data):
-                try:
-                    print(f"🖼️ Adding image {i+1} from AI response")
-                    # For now, we'll add a placeholder for images
-                    # In the future, you can implement actual image handling
-                    img_paragraph = doc.add_paragraph(f"[Image: {image_data.get('alt', 'AI Generated Chart')}]")
-                    img_paragraph.alignment = WD_ALIGN_PARAGRAPH.CENTER
-                    for run in img_paragraph.runs:
-                        run.font.name = 'Inter'
-                        run.font.size = Pt(12)
-                        run.font.italic = True
-                        run.font.color.rgb = RGBColor(113, 128, 150)  # --color-text-secondary
-                    
-                    doc.add_paragraph('')  # Add space after image
-                    print(f"✅ Added image placeholder {i+1}")
-                except Exception as e:
-                    print(f"❌ Error adding image {i+1}: {e}")
-            
-            # Process regular content (markdown tables, text, etc.)
-            lines = content.splitlines()
-            table_rows = [l for l in lines if l.strip().startswith('|') and l.strip().endswith('|')]
-            if table_rows:
-                parsed_rows = []
-                for row in table_rows:
-                    cells = [c.strip() for c in row.strip('|').split('|')]
-                    parsed_rows.append(cells)
-                if parsed_rows:
-                    table = doc.add_table(rows=len(parsed_rows), cols=len(parsed_rows[0]))
-                    table.style = 'Table Grid'
-                    
-                    for r_idx, row_cells in enumerate(parsed_rows):
-                        for c_idx, cell_text in enumerate(row_cells):
-                            cell = table.cell(r_idx, c_idx)
-                            cell.text = str(cell_text)
-                            
-                            if r_idx == 0:
-                                for paragraph in cell.paragraphs:
-                                    for run in paragraph.runs:
-                                        run.font.name = 'Inter'
-                                        run.font.bold = True
-                                        run.font.color.rgb = RGBColor(255, 255, 255)  # White text
-                                        run.font.size = Pt(11)
-                                cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
-                                cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
-                            else:
-                                for paragraph in cell.paragraphs:
-                                    for run in paragraph.runs:
-                                        run.font.name = 'Inter'
-                                        run.font.size = Pt(10)
-                                        run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
+                        for r_idx, row_cells in enumerate(parsed_rows):
+                            for c_idx, cell_text in enumerate(row_cells):
+                                cell = table.cell(r_idx, c_idx)
+                                cell.text = str(cell_text)
+                                
+                                if r_idx == 0:
+                                    for paragraph in cell.paragraphs:
+                                        for run in paragraph.runs:
+                                            run.font.name = 'Inter'
+                                            run.font.bold = True
+                                            run.font.color.rgb = RGBColor(255, 255, 255)  # White text
+                                            run.font.size = Pt(11)
+                                    cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
+                                    cell._tc.get_or_add_tcPr().find(qn('w:shd')).set(qn('w:fill'), '1a365d')  # Primary color
+                                else:
+                                    for paragraph in cell.paragraphs:
+                                        for run in paragraph.runs:
+                                            run.font.name = 'Inter'
+                                            run.font.size = Pt(10)
+                                            run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
                                     
                                     if r_idx % 2 == 1:
                                         cell._tc.get_or_add_tcPr().append(OxmlElement('w:shd'))
@@ -1521,7 +1772,6 @@ def download_report(request):
                         for column in table.columns:
                             column.width = Inches(1.5)
                     
-                    non_table_lines = [l for l in lines if l not in table_rows and l.strip()]
                     if non_table_lines:
                         for line in non_table_lines:
                             line = line.strip()
@@ -1551,7 +1801,8 @@ def download_report(request):
                                     run.font.name = 'Inter'
                                     run.font.color.rgb = RGBColor(45, 55, 72)  # --color-text-primary
                 else:
-                    paragraphs = content.split('\n\n')
+                    # Process non-table content only
+                    paragraphs = '\n'.join(non_table_lines).split('\n\n')
                     for para in paragraphs:
                         para = para.strip()
                         if para.startswith('##'):
@@ -1619,3 +1870,38 @@ def download_report(request):
         return JsonResponse({'error': 'Session not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Error generating report: {str(e)}'}, status=500)
+
+def extract_html_tables_from_content(content):
+    """Extract HTML tables from AI response content and convert them to Word format"""
+    tables = []
+    
+    try:
+        # Use BeautifulSoup to parse HTML content
+        soup = BeautifulSoup(content, 'html.parser')
+        
+        # Find all table elements
+        html_tables = soup.find_all('table')
+        
+        for i, table in enumerate(html_tables):
+            # Extract table data
+            rows = table.find_all('tr')
+            if rows:
+                # Determine max columns across all rows
+                max_cols = max(len(row.find_all(['td', 'th'])) for row in rows)
+                
+                # Create table data structure
+                table_data = {
+                    'type': 'html',
+                    'html': str(table),
+                    'title': f'Table {i+1}',
+                    'rows': len(rows),
+                    'columns': max_cols
+                }
+                tables.append(table_data)
+                print(f"📊 Extracted HTML table {i+1} with {len(rows)} rows and {max_cols} columns")
+        
+        return tables
+        
+    except Exception as e:
+        print(f"❌ Error extracting HTML tables: {e}")
+        return []

@@ -3302,6 +3302,7 @@
                 const lines = content.split('\n');
                 let currentTable = [];
                 let tableIndex = 0;
+                let extractedTableContent = new Set(); // Track extracted table content
                 
                 for (let i = 0; i < lines.length; i++) {
                     const line = lines[i].trim();
@@ -3322,6 +3323,7 @@
                                 type: 'markdown'
                             };
                             reportData.tables.push(tableData);
+                            extractedTableContent.add(tableText.trim()); // Track this table
                             console.log(`📊 Extracted markdown table ${tableIndex + 1}:`, tableData);
                             tableIndex++;
                         }
@@ -3339,6 +3341,7 @@
                         type: 'markdown'
                     };
                     reportData.tables.push(tableData);
+                    extractedTableContent.add(tableText.trim()); // Track this table
                     console.log(`📊 Extracted markdown table ${tableIndex + 1}:`, tableData);
                 }
                 
@@ -3346,17 +3349,34 @@
                 const formattedContent = formatAIResponse(content);
                 messageContent.innerHTML = formattedContent;
                 
-                // Extract HTML tables from the formatted content (in case there are any)
+                // Extract HTML tables from the formatted content (EXCLUDE already extracted markdown tables)
                 const tableElements = messageContent.querySelectorAll('table');
                 tableElements.forEach((table, index) => {
-                    const tableData = {
-                        id: `html_table_${Date.now()}_${index}`,
-                        html: table.outerHTML,
-                        text: table.textContent.trim(),
-                        type: 'html'
-                    };
-                    reportData.tables.push(tableData);
-                    console.log(`📊 Extracted HTML table ${index + 1}:`, tableData);
+                    const tableText = table.textContent.trim();
+                    const tableHTML = table.outerHTML;
+                    
+                    // Check if this table content was already extracted as markdown
+                    let isAlreadyExtracted = false;
+                    for (const extractedContent of extractedTableContent) {
+                        // Compare the text content to see if it's the same table
+                        if (tableText.includes(extractedContent.replace(/\|/g, '').replace(/\n/g, ' ').trim()) ||
+                            extractedContent.replace(/\|/g, '').replace(/\n/g, ' ').trim().includes(tableText)) {
+                            isAlreadyExtracted = true;
+                            console.log(`⚠️ Skipping HTML table ${index + 1} - already extracted as markdown`);
+                            break;
+                        }
+                    }
+                    
+                    if (!isAlreadyExtracted) {
+                        const tableData = {
+                            id: `html_table_${Date.now()}_${index}`,
+                            html: tableHTML,
+                            text: tableText,
+                            type: 'html'
+                        };
+                        reportData.tables.push(tableData);
+                        console.log(`📊 Extracted HTML table ${index + 1}:`, tableData);
+                    }
                 });
                 
                 // Extract images (if any are added in the future)

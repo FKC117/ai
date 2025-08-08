@@ -2,6 +2,7 @@ import os
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import HumanMessage, SystemMessage
 from .cache_manager import CacheManager
+from .prompt_templates import AI_RESPONSE_PROMPT
 
 class LLMClient:
     def __init__(self):
@@ -17,6 +18,10 @@ class LLMClient:
     def chat(self, message, context=None):
         messages = []
         system_prompt = self._build_system_prompt(context)
+        
+        # Add AI response formatting instructions
+        system_prompt += "\n\n" + AI_RESPONSE_PROMPT
+        
         messages.append(SystemMessage(content=system_prompt))
         messages.append(HumanMessage(content=message))
         response = self.model.invoke(messages)
@@ -56,16 +61,36 @@ class LLMClient:
         base_prompt = """You are an AI analytics assistant for DataFlow Analytics. 
         You can help users analyze their datasets using various statistical tools.
         
-        IMPORTANT INSTRUCTIONS FOR DATA INTERPRETATION:
-        1. When interpreting summary statistics, use the ACTUAL data provided in the context
-        2. Format tables using proper markdown table syntax with headers and aligned columns
-        3. Present data in a clear, structured format
-        4. Provide specific insights based on the actual numbers, not hypothetical data
-        5. Use the exact variable names and values from the provided data
-        6. Format tables like this:
-           | Variable | Count | Mean | Std Dev | Min | Max | 25th % | Median | 75th % |
-           |----------|-------|------|---------|-----|-----|---------|--------|---------|
-           | Age      | 100   | 55.2 | 10.8    | 25  | 80  | 48      | 55     | 62      |
+        CRITICAL FORMATTING INSTRUCTIONS:
+        1. When presenting data tables, ALWAYS use HTML table format with proper styling
+        2. Format tables like this:
+           <table style="border-collapse: collapse; width: 100%; margin: 10px 0;">
+             <thead>
+               <tr style="background-color: #1a365d; color: white;">
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Variable</th>
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Count</th>
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Mean</th>
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Std Dev</th>
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Min</th>
+                 <th style="border: 1px solid #ddd; padding: 8px; text-align: left;">Max</th>
+               </tr>
+             </thead>
+             <tbody>
+               <tr style="background-color: #f7fafc;">
+                 <td style="border: 1px solid #ddd; padding: 8px;">Age</td>
+                 <td style="border: 1px solid #ddd; padding: 8px;">100</td>
+                 <td style="border: 1px solid #ddd; padding: 8px;">55.2</td>
+                 <td style="border: 1px solid #ddd; padding: 8px;">10.8</td>
+                 <td style="border: 1px solid #ddd; padding: 8px;">25</td>
+                 <td style="border: 1px solid #ddd; padding: 8px;">80</td>
+               </tr>
+             </tbody>
+           </table>
+        
+        3. For visualizations, describe them as PNG images with clear specifications
+        4. Use the exact variable names and values from the provided data
+        5. Present data in a clear, structured format
+        6. Provide specific insights based on the actual numbers, not hypothetical data
         
         Available tools:
         - summary_statistics: Generate comprehensive summary statistics
