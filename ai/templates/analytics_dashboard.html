@@ -3317,39 +3317,47 @@
                 });
             });
 
-            // Pass data to AI
-            passDataButton.addEventListener('click', function() {
+            // Pass data to AI (send consolidated EDA context via backend chat)
+            passDataButton.addEventListener('click', async function() {
                 if (window.currentDatasetId) {
-                    // Update context info
-                    aiContextInfo.textContent = `Dataset: ${window.currentDatasetName || 'Current Dataset'} | Analysis: ${window.currentAnalysisType || 'EDA'}`;
-                    
-                    // Add system message to chat
-                    const systemMessage = document.createElement('div');
-                    systemMessage.className = 'flex items-start';
-                    systemMessage.innerHTML = `
-                        <div class="w-8 h-8 bg-accent rounded-full flex items-center justify-center mr-3 flex-shrink-0">
-                            <svg class="w-4 h-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                            </svg>
-                        </div>
-                        <div class="w-full max-w-full bg-white rounded-lg p-3 shadow-sm border border-gray-200 chat-content-resizable">
-                            <p class="text-sm text-text-primary">✅ Data context loaded! I now have access to your dataset and analysis results. I can help you interpret the statistics, explain patterns, and suggest next steps. What would you like to explore?</p>
-                        </div>
-                    `;
-                    window.chatMessages.appendChild(systemMessage);
-                    window.chatMessages.scrollTop = window.chatMessages.scrollHeight;
-                    
-                    // Store context in conversation history
-                    window.conversationHistory.push({
-                        role: 'system',
-                        content: `Dataset loaded: ${window.currentDatasetName || 'Current Dataset'} | Analysis type: ${window.currentAnalysisType || 'EDA'}`
-                    });
-                    
-                    // Update button state
-                    this.disabled = true;
-                    this.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Data Loaded';
-                    this.classList.remove('btn-accent');
-                    this.classList.add('bg-success', 'text-white');
+                    try {
+                        // Update context info
+                        aiContextInfo.textContent = `Dataset: ${window.currentDatasetName || 'Current Dataset'} | Analysis: ${window.currentAnalysisType || 'EDA'}`;
+
+                        // Disable button and show loading
+                        passDataButton.disabled = true;
+                        passDataButton.innerHTML = '<svg class="w-4 h-4 mr-2 inline animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>Passing EDA...';
+
+                        // Send a lightweight message that triggers backend to include full EDA context
+                        const body = {
+                            message: 'Load EDA context (Summary Statistics, Distributions, Correlation Matrix, Outlier Analysis).',
+                            dataset_id: window.currentDatasetId,
+                            session_id: window.currentSessionId || null,
+                        };
+                        const resp = await fetch('/api/v1/chat/send_message/', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+                            body: JSON.stringify(body)
+                        });
+                        if (!resp.ok) throw new Error('Failed to pass data to AI');
+                        const result = await resp.json();
+
+                        // Update session id if returned
+                        if (result.session_id) window.currentSessionId = result.session_id;
+
+                        // Add AI response to chat
+                        if (result.response) addChatMessage(result.response, 'ai', result.message_id, false);
+
+                        // Mark button as loaded
+                        passDataButton.innerHTML = '<svg class="w-4 h-4 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>Data Loaded';
+                        passDataButton.classList.remove('btn-accent');
+                        passDataButton.classList.add('bg-success', 'text-white');
+                    } catch (e) {
+                        console.error('Pass Data to AI failed:', e);
+                        passDataButton.disabled = false;
+                        passDataButton.innerHTML = '<svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>Pass Data to AI';
+                        alert('Failed to pass EDA to AI');
+                    }
                 } else {
                     // Show error if no dataset
                     const errorMessage = document.createElement('div');

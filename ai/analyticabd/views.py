@@ -1028,9 +1028,18 @@ def send_chat_message(request):
         print(f"✅ Stored user message: {user_message.id}")
         
         # Get summary statistics for context
-        print("📊 Getting summary statistics...")
+        print("📊 Getting summary statistics (EDA components)...")
         summary_data = get_summary_statistics_data(dataset_id)
-        print(f"✅ Summary data retrieved - {len(summary_data.get('variable_summary', {}))} variables")
+        var_sum = summary_data.get('variable_summary', {}) or {}
+        dist_ins = summary_data.get('distribution_insights', {}) or {}
+        corr_info = summary_data.get('correlation_matrix', {}) or {}
+        corr_matrix = corr_info.get('matrix', {}) or {}
+        corr_strong = corr_info.get('strong_correlations', []) or []
+        out_info = summary_data.get('outlier_analysis', {}) or {}
+        print(f"✅ Summary data retrieved - variable_summary: {len(var_sum)} variables")
+        print(f"✅ Distribution insights passed to AI - keys: {len(dist_ins)}")
+        print(f"✅ Correlation matrix passed to AI - variables: {len(corr_matrix)}, strong pairs: {len(corr_strong)}")
+        print(f"✅ Outlier analysis passed to AI - variables analyzed: {len(out_info)}")
         
         # Prepare context for AI
         context = {
@@ -1057,6 +1066,7 @@ def send_chat_message(request):
         
         context['chat_history'] = '\n'.join(chat_history[-6:])  # Last 6 messages for context
         print(f"✅ Chat history prepared - {len(chat_history)} previous messages")
+        print("🧠 Passing EDA context to AI: [Summary, Distributions, Correlation, Outliers]")
         
         # Use the actual AI client
         print("🤖 Initializing AI client...")
@@ -1304,11 +1314,11 @@ def add_to_report(request):
                 # Add comprehensive summary data table (attached to report metadata below)
                 content_parts.append("## Complete Dataset Summary Table\n")
                 content_parts.append("A full summary table for all variables is attached to this section.")
-
+                
                 # Add correlation summary if available
                 corr = stats.get('correlation_matrix', {})
                 if corr and corr.get('strong_correlations'):
-                    content_parts.append(f"\n## Correlation Summary\n")
+                    content_parts.append("\n## Correlation Summary\n")
                     content_parts.append('| Variable 1 | Variable 2 | Correlation | Strength |')
                     content_parts.append('|------------|------------|-------------|----------|')
                     for corr_item in corr['strong_correlations']:
