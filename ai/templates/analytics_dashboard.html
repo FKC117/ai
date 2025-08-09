@@ -979,7 +979,7 @@
                                 <span>Interactive Charts</span>
                             </div>
                         </div>
-                        <div id="main-chart" class="h-96 w-full flex items-center justify-center"></div>
+                        <div id="main-chart" class="w-full"></div>
                         <div id="correlation-container" class="hidden mt-4">
                             <div class="overflow-auto" id="correlation-table-wrapper"></div>
                             <div class="mt-3 text-xs text-text-secondary" id="correlation-notes"></div>
@@ -3536,8 +3536,99 @@
                     titleElement.textContent = titles[tabId];
                 }
 
-                // Toggle correlation view
-                if (tabId === 'tab-correlation') {
+                // Distributions view
+                if (tabId === 'tab-distributions') {
+                    const dataset = ds[idx];
+                    try {
+                        // Reuse analysis endpoint and build a small summary from variable_summary
+                        const res = await fetch(`{% url "get_dataset_analysis" 0 %}`.replace('0', dataset.id));
+                        const data = await res.json();
+                        if (!data || data.error) throw new Error(data?.error || 'Failed to load analysis');
+
+                        // Normalize variable_summary shape to an array of {name, ...meta}
+                        let varsArr = [];
+                        if (Array.isArray(data.variable_summary)) {
+                            // Likely from views.get_summary_statistics path (unused here but safe)
+                            varsArr = data.variable_summary;
+                        } else if (data.variable_summary && typeof data.variable_summary === 'object') {
+                            varsArr = Object.entries(data.variable_summary).map(([name, meta]) => ({ name, ...meta }));
+                        }
+
+                        // Filter numeric entries (handle both 'numeric' and 'Numeric')
+                        const numeric = varsArr.filter(v => (v.type || '').toString().toLowerCase() === 'numeric');
+
+                        // Compute variance proxy using std or std_dev
+                        const ranked = numeric
+                            .map(v => {
+                                const stdVal = (typeof v.std === 'number') ? v.std : (typeof v.std_dev === 'number' ? v.std_dev : null);
+                                const meanVal = (typeof v.mean === 'number') ? v.mean : null;
+                                const variance = (stdVal != null) ? (stdVal ** 2) : 0;
+                                return { ...v, _var: variance, _std: stdVal, _mean: meanVal };
+                            })
+                            .sort((a, b) => b._var - a._var)
+                            .slice(0, 6);
+
+                        // Build a compact table summary
+                        let html = '<table class="min-w-full border-collapse border border-gray-200 text-xs">';
+                        html += '<thead><tr>' + ['Variable','Mean','Std','Min','Q25','Median','Q75','Max','Skew?']
+                            .map(h => `<th class="border border-gray-200 p-1 bg-gray-50">${h}</th>`).join('') + '</tr></thead><tbody>';
+                        ranked.forEach(v => {
+                            const mean = (typeof v._mean === 'number') ? v._mean : (typeof v.mean === 'number' ? v.mean : null);
+                            const std = (typeof v._std === 'number') ? v._std : (typeof v.std === 'number' ? v.std : (typeof v.std_dev === 'number' ? v.std_dev : null));
+                            const minVal = (typeof v.min === 'number') ? v.min : (typeof v.min_value === 'number' ? v.min_value : null);
+                            const q25 = (typeof v.q25 === 'number') ? v.q25 : null;
+                            const median = (typeof v.median === 'number') ? v.median : null;
+                            const q75 = (typeof v.q75 === 'number') ? v.q75 : null;
+                            const maxVal = (typeof v.max === 'number') ? v.max : (typeof v.max_value === 'number' ? v.max_value : null);
+                            const skewHint = (typeof std === 'number' && std > 0) ? '' : '—';
+
+                            html += '<tr>' + [
+                                v.name || v.variable || '-',
+                                (typeof mean === 'number' ? mean.toFixed(2) : 'N/A'),
+                                (typeof std === 'number' ? std.toFixed(2) : 'N/A'),
+                                (typeof minVal === 'number' ? minVal.toFixed(2) : 'N/A'),
+                                (typeof q25 === 'number' ? q25.toFixed(2) : 'N/A'),
+                                (typeof median === 'number' ? median.toFixed(2) : 'N/A'),
+                                (typeof q75 === 'number' ? q75.toFixed(2) : 'N/A'),
+                                (typeof maxVal === 'number' ? maxVal.toFixed(2) : 'N/A'),
+                                skewHint
+                            ].map(x => `<td class="border border-gray-200 p-1 text-right">${x}</td>`).join('') + '</tr>';
+                        });
+                        html += '</tbody></table>';
+                        // Structure: image(s) first, then table, then interpretation
+                        // Build separate sections: charts then table
+                        const distImgUrl = `{% url "distributions_image" 0 %}`.replace('0', dataset.id) + `?top=12&bins=20&t=${Date.now()}`;
+                        const chartsSection = `
+                            <div class="w-full bg-white border border-border-light rounded mb-4 overflow-auto max-h-[60vh]">
+                                <div class="p-3">
+                                    <img src="${distImgUrl}" alt="Distributions" class="w-auto max-w-full h-auto object-contain mx-auto" />
+                                </div>
+                            </div>`;
+                        const tableSection = `
+                            <div class="w-full bg-white border border-border-light rounded overflow-auto max-h-[60vh]">
+                                <div class="p-3">
+                                    ${html}
+                                </div>
+                            </div>`;
+                        chartContainer.innerHTML = chartsSection + tableSection;
+
+                        // Brief interpretation under the table
+                        const interp = (ranked.length === 0)
+                            ? 'No numeric variables available for distribution analysis.'
+                            : 'Top variables selected by variance. Skewness can be further assessed from summary statistics.';
+                        const interpDiv = `<div class=\"mt-2 text-xs text-text-secondary\">${interp}</div>`;
+                        chartContainer.innerHTML += interpDiv;
+
+                        // Hide correlation section if visible
+                        corrContainer.classList.add('hidden');
+                        corrWrapper.innerHTML = '';
+                        corrNotes.textContent = '';
+                        document.getElementById('correlation-heatmap').innerHTML = '';
+                    } catch (e) {
+                        chartContainer.innerHTML = '<div class="text-sm text-red-600">Error loading distributions.</div>';
+                    }
+                } else if (tabId === 'tab-correlation') {
+                    // Correlation view
                     // Fetch analysis (includes correlation) for the current dataset
                     const dataset = ds[idx];
                     try {

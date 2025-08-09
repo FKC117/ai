@@ -5,10 +5,14 @@ class ToolRegistry:
     
     def _register_all_tools(self):
         from .summary_statistics_tool import SummaryStatisticsTool
+        from .correlation_tool import CorrelationTool
+        from .distributions_tool import DistributionsTool
         
         # Register available tools
         self.tools.update({
             'summary_statistics': SummaryStatisticsTool,
+            'correlation': CorrelationTool,
+            'distributions': DistributionsTool,
         })
         
         # Future tools will be added here:

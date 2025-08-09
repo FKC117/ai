@@ -484,6 +484,96 @@ def correlation_heatmap(request, dataset_id):
     except Exception as e:
         return JsonResponse({'error': f'Error generating heatmap: {str(e)}'}, status=500)
 
+
+@login_required
+def distributions_image(request, dataset_id):
+    """Return a PNG grid of charts (2 columns):
+    - Numeric columns: Histogram + KDE
+    - Categorical columns: Countplot
+    The grid is dynamically sized by rows; frontend can scroll if large.
+    """
+    try:
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        from .analytics_service import read_dataset_file
+        import numpy as np
+        import pandas as pd
+
+        top = int(request.GET.get('top', 12))
+        bins = int(request.GET.get('bins', 20))
+
+        df = read_dataset_file(dataset)
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        categorical_cols = df.select_dtypes(include=['object', 'category', 'bool']).columns.tolist()
+        if len(numeric_cols) == 0 and len(categorical_cols) == 0:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.text(0.5, 0.5, 'No numeric variables to plot', ha='center', va='center')
+            ax.axis('off')
+        else:
+            # Rank numeric by variance (desc)
+            num_ranked = []
+            for c in numeric_cols:
+                series = pd.to_numeric(df[c], errors='coerce').dropna()
+                var = float(series.var()) if len(series) > 0 else -1
+                num_ranked.append((c, var))
+            num_ranked.sort(key=lambda x: x[1], reverse=True)
+
+            # Rank categorical by cardinality (desc)
+            cat_ranked = []
+            for c in categorical_cols:
+                vc = df[c].astype('category')
+                cat_ranked.append((c, int(vc.nunique())))
+            cat_ranked.sort(key=lambda x: x[1], reverse=True)
+
+            # Combine, numeric first then categorical, limit by top
+            ordered_cols = [c for c, _ in num_ranked] + [c for c, _ in cat_ranked]
+            ordered_cols = ordered_cols[:top]
+
+            n = len(ordered_cols)
+            cols = 2
+            rows = max(1, int(np.ceil(n / cols)))
+            fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5))
+            if rows == 1 and cols == 1:
+                axes = np.array([[axes]])
+            elif rows == 1:
+                axes = np.array([axes])
+            elif cols == 1:
+                axes = np.array([[ax] for ax in axes])
+
+            idx = 0
+            for r in range(rows):
+                for c in range(cols):
+                    ax = axes[r, c]
+                    if idx < n:
+                        colname = ordered_cols[idx]
+                        if colname in numeric_cols:
+                            series = pd.to_numeric(df[colname], errors='coerce').dropna()
+                            if len(series) > 0:
+                                sns.histplot(series, bins=bins, kde=True, ax=ax, color='#1a365d')
+                            else:
+                                ax.text(0.5, 0.5, f'{colname}\n(no data)', ha='center', va='center', fontsize=8)
+                            ax.set_title(f'{colname} (Histogram + KDE)', fontsize=9)
+                        else:
+                            sns.countplot(x=df[colname], ax=ax, color='#1a365d')
+                            ax.set_title(f'{colname} (Count)', fontsize=9)
+                            for label in ax.get_xticklabels():
+                                label.set_rotation(45)
+                                label.set_ha('right')
+                        idx += 1
+                    else:
+                        ax.axis('off')
+            plt.tight_layout()
+
+        from io import BytesIO
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        return HttpResponse(buf.getvalue(), content_type='image/png')
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating distributions: {str(e)}'}, status=500)
+
 @login_required
 def get_user_datasets(request):
     """Get all datasets for the current user"""
