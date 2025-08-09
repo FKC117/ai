@@ -11,7 +11,7 @@ class LLMClient:
             model="gemini-1.5-flash",
             google_api_key=self.api_key,
             temperature=0.1,
-            max_tokens=4000
+            max_tokens=12000
         )
         self.cache_manager = CacheManager()
     
