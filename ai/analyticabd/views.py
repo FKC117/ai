@@ -6,7 +6,7 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from .forms import CustomUserCreationForm, CustomAuthenticationForm
-from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference, AnalysisHistory, UserWarningPreference, ReportDocument, ReportSection, ChatMessage
+from .models import UserDataset, DatasetVariable, AnalysisSession, AnalysisInteraction, UserPreference, AnalysisHistory, UserWarningPreference, ReportDocument, ReportSection, ChatMessage, DatasetUIState
 import pandas as pd
 import numpy as np
 import json
@@ -473,11 +473,23 @@ def get_user_state(request):
                 'updated_at': session.updated_at.strftime('%b %d, %Y')
             })
         
+        # Get dataset-specific UI state if current dataset exists
+        current_session_id = None
+        ui_state = {}
+        if user_pref.current_dataset:
+            dataset_ui_state = DatasetUIState.objects.filter(
+                user=request.user,
+                dataset=user_pref.current_dataset
+            ).first()
+            if dataset_ui_state:
+                current_session_id = dataset_ui_state.current_session.id if dataset_ui_state.current_session else None
+                ui_state = dataset_ui_state.ui_state
+        
         return JsonResponse({
             'datasets': dataset_list,
             'current_dataset_index': current_dataset_index,
-            'current_session_id': user_pref.current_session.id if user_pref.current_session else None,
-            'ui_state': user_pref.ui_state,
+            'current_session_id': current_session_id,
+            'ui_state': ui_state,
             'default_analysis_type': user_pref.default_analysis_type,
             'recent_sessions': session_list
         })
@@ -498,6 +510,7 @@ def set_current_dataset(request):
         # Update user preferences
         user_pref, created = UserPreference.objects.get_or_create(user=request.user)
         user_pref.current_dataset = dataset
+        user_pref.save()
         
         # Create or update analysis session
         session, created = AnalysisSession.objects.get_or_create(
@@ -511,9 +524,16 @@ def set_current_dataset(request):
             session.updated_at = datetime.now()
             session.save()
         
-        # Store current session in user preferences
-        user_pref.current_session = session
-        user_pref.save()
+        # Store current session in dataset-specific UI state
+        dataset_ui_state, created = DatasetUIState.objects.get_or_create(
+            user=request.user,
+            dataset=dataset,
+            defaults={'current_session': session}
+        )
+        
+        if not created:
+            dataset_ui_state.current_session = session
+            dataset_ui_state.save()
         
         return JsonResponse({
             'success': True,
@@ -606,14 +626,24 @@ def delete_dataset(request):
         dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
         dataset_name = dataset.name
         
-        # Delete the dataset (cascade will handle related objects)
-        dataset.delete()
+        # Clean up all related data before deleting the dataset
+        # This will automatically delete:
+        # - AnalysisSession (CASCADE)
+        # - ChatMessage (CASCADE via session)
+        # - AnalysisHistory (CASCADE)
+        # - ReportDocument (CASCADE)
+        # - ReportSection (CASCADE via document)
+        # - DatasetUIState (CASCADE)
+        # - DatasetVariable (CASCADE)
         
         # Update user preferences if this was the current dataset
         user_pref, created = UserPreference.objects.get_or_create(user=request.user)
         if user_pref.current_dataset and user_pref.current_dataset.id == int(dataset_id):
             user_pref.current_dataset = None
             user_pref.save()
+        
+        # Delete the dataset (cascade will handle related objects)
+        dataset.delete()
         
         return JsonResponse({
             'success': True,
@@ -673,16 +703,31 @@ def save_ui_state(request):
     """Save UI state to database"""
     try:
         ui_state = json.loads(request.POST.get('ui_state', '{}'))
+        dataset_id = request.POST.get('dataset_id')
         
-        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
-        user_pref.ui_state = ui_state
-        user_pref.save()
+        if not dataset_id:
+            return JsonResponse({'error': 'dataset_id is required'}, status=400)
+        
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        
+        # Save to dataset-specific UI state
+        dataset_ui_state, created = DatasetUIState.objects.get_or_create(
+            user=request.user,
+            dataset=dataset,
+            defaults={'ui_state': ui_state}
+        )
+        
+        if not created:
+            dataset_ui_state.ui_state = ui_state
+            dataset_ui_state.save()
         
         return JsonResponse({
             'success': True,
             'message': 'UI state saved successfully'
         })
         
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Error saving UI state: {str(e)}'}, status=500)
 

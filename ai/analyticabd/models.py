@@ -123,14 +123,29 @@ class UserPreference(models.Model):
     """Store user preferences and settings"""
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='preferences')
     current_dataset = models.ForeignKey(UserDataset, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_for_users')
-    current_session = models.ForeignKey(AnalysisSession, on_delete=models.SET_NULL, null=True, blank=True, related_name='current_for_users')
     default_analysis_type = models.CharField(max_length=50, default='summary_stats')
-    ui_state = models.JSONField(default=dict, blank=True)  # Store UI preferences like dataset_index, chat_scroll_position, etc.
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
         return f"{self.user.username} - Preferences"
+
+
+class DatasetUIState(models.Model):
+    """Store dataset-specific UI state and session information"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='dataset_ui_states')
+    dataset = models.ForeignKey(UserDataset, on_delete=models.CASCADE, related_name='ui_states')
+    current_session = models.ForeignKey(AnalysisSession, on_delete=models.SET_NULL, null=True, blank=True, related_name='ui_state_for_dataset')
+    ui_state = models.JSONField(default=dict, blank=True)  # Store UI preferences like dataset_index, chat_scroll_position, etc.
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['user', 'dataset']
+        ordering = ['-updated_at']
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.dataset.name} - UI State"
 
 class AnalysisHistory(models.Model):
     """Track analysis history for each dataset"""

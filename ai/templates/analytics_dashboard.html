@@ -1184,8 +1184,14 @@
             
             // New function to save UI state to database
             function saveUIStateToDatabase(state) {
+                if (!window.currentDatasetId) {
+                    console.log('No current dataset, skipping UI state save');
+                    return;
+                }
+                
                 const formData = new FormData();
                 formData.append('ui_state', JSON.stringify(state));
+                formData.append('dataset_id', window.currentDatasetId);
                 
                 fetch('{% url "save_ui_state" %}', {
                     method: 'POST',
@@ -1197,7 +1203,7 @@
                 .then(response => response.json())
                 .then(data => {
                     if (data.success) {
-                        console.log('UI state saved to database:', state);
+                        console.log('UI state saved to database for dataset:', window.currentDatasetId, state);
                     } else {
                         console.error('Error saving UI state to database:', data.error);
                     }
@@ -1341,7 +1347,8 @@
                 const formData = new FormData();
                 formData.append('dataset_id', datasetId);
                 
-                fetch('{% url "set_current_dataset" %}', {
+                // Return the promise so callers can chain actions (e.g., reload chat)
+                return fetch('{% url "set_current_dataset" %}', {
                     method: 'POST',
                     body: formData,
                     headers: {
@@ -1369,9 +1376,11 @@
                     } else {
                         console.error('Error saving current dataset:', data.error);
                     }
+                    return data;
                 })
                 .catch(error => {
                     console.error('Error saving current dataset:', error);
+                    throw error;
                 });
             }
             
@@ -1457,13 +1466,17 @@
             window.switchDataset = function(index) {
                 currentDatasetIndex = index;
                 
-                // Save current dataset to backend
+                // Save current dataset to backend and then load chat history for that dataset
                 if (datasets[index]) {
-                    saveCurrentDataset(datasets[index].id);
-                    
-                    // Set current dataset for AI chat
-                    currentDatasetId = datasets[index].id;
-                    currentDatasetName = datasets[index].name;
+                    // Set current dataset for AI chat immediately
+                    window.currentDatasetId = datasets[index].id;
+                    window.currentDatasetName = datasets[index].name;
+
+                    // Reset session and clear current chat UI while loading new history
+                    window.currentSessionId = null;
+                    if (window.chatMessages) {
+                        window.chatMessages.innerHTML = '';
+                    }
                     
                     // Update AI context info
                     if (aiContextInfo) {
@@ -1486,6 +1499,21 @@
                     
                     // Check if this dataset has summary statistics analysis
                     checkAnalysisHistory(datasets[index].id);
+
+                    // Persist the selection and then load the correct chat history
+                    saveCurrentDataset(datasets[index].id)
+                        .then(() => {
+                            // After backend confirms session for this dataset, load its chat
+                            if (typeof loadChatHistory === 'function') {
+                                loadChatHistory();
+                            }
+                        })
+                        .catch(() => {
+                            // Even if save failed, attempt to load chat for the selected dataset
+                            if (typeof loadChatHistory === 'function') {
+                                loadChatHistory();
+                            }
+                        });
                 }
                 
                 // Minimize upload section when switching datasets
