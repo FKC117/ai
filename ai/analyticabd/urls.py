@@ -23,6 +23,7 @@ urlpatterns = [
     path('api/analysis/<int:dataset_id>/', views.get_dataset_analysis, name='get_dataset_analysis'),
     path('api/analysis/<int:dataset_id>/heatmap.png', views.correlation_heatmap, name='correlation_heatmap'),
     path('api/analysis/<int:dataset_id>/distributions.png', views.distributions_image, name='distributions_image'),
+    path('api/analysis/<int:dataset_id>/outliers.png', views.outliers_image, name='outliers_image'),
     path('api/user-state/', views.get_user_state, name='get_user_state'),
     path('api/set-current-dataset/', views.set_current_dataset, name='set_current_dataset'),
     path('api/record-interaction/', views.record_interaction, name='record_interaction'),

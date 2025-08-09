@@ -7,12 +7,14 @@ class ToolRegistry:
         from .summary_statistics_tool import SummaryStatisticsTool
         from .correlation_tool import CorrelationTool
         from .distributions_tool import DistributionsTool
+        from .outliers_tool import OutliersTool
         
         # Register available tools
         self.tools.update({
             'summary_statistics': SummaryStatisticsTool,
             'correlation': CorrelationTool,
             'distributions': DistributionsTool,
+            'outliers': OutliersTool,
         })
         
         # Future tools will be added here:

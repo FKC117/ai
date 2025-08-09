@@ -3686,6 +3686,64 @@
                         corrNotes.textContent = '';
                         corrContainer.classList.add('hidden');
                     }
+                } else if (tabId === 'tab-outliers') {
+                    const dataset = ds[idx];
+                    try {
+                        const res = await fetch(`{% url "get_dataset_analysis" 0 %}`.replace('0', dataset.id));
+                        const data = await res.json();
+                        if (!data || data.error) throw new Error(data?.error || 'Failed to load analysis');
+
+                        // Charts section: outlier boxplots grid
+                        const outImg = `{% url "outliers_image" 0 %}`.replace('0', dataset.id) + `?top=12&iqr=1.5&t=${Date.now()}`;
+                        const charts = `
+                            <div class="w-full bg-white border border-border-light rounded mb-4 overflow-auto max-h-[60vh]">
+                                <div class="p-3">
+                                    <img src="${outImg}" alt="Outlier Analysis" class="w-auto max-w-full h-auto object-contain mx-auto" />
+                                </div>
+                            </div>`;
+
+                        // Table from outlier_analysis
+                        const oa = data.outlier_analysis || {};
+                        const rows = Object.entries(oa).map(([name, meta]) => ({
+                            name,
+                            count: meta?.count ?? 0,
+                            pct: (typeof meta?.percentage === 'number') ? (meta.percentage * 100).toFixed(1) + '%' : '0.0%',
+                            lower: (typeof meta?.lower_bound === 'number') ? meta.lower_bound.toFixed(2) : 'N/A',
+                            upper: (typeof meta?.upper_bound === 'number') ? meta.upper_bound.toFixed(2) : 'N/A',
+                        }));
+                        rows.sort((a, b) => b.count - a.count);
+                        let table = '<table class="min-w-full border-collapse border border-gray-200 text-xs">';
+                        table += '<thead><tr>' + ['Variable','Outliers','%','Lower bound','Upper bound']
+                            .map(h => `<th class="border border-gray-200 p-1 bg-gray-50">${h}</th>`).join('') + '</tr></thead><tbody>';
+                        rows.forEach(r => {
+                            table += `<tr>
+                                <td class="border border-gray-200 p-1 text-left">${r.name}</td>
+                                <td class="border border-gray-200 p-1 text-right">${r.count}</td>
+                                <td class="border border-gray-200 p-1 text-right">${r.pct}</td>
+                                <td class="border border-gray-200 p-1 text-right">${r.lower}</td>
+                                <td class="border border-gray-200 p-1 text-right">${r.upper}</td>
+                            </tr>`;
+                        });
+                        table += '</tbody></table>';
+                        const tableCard = `
+                            <div class="w-full bg-white border border-border-light rounded overflow-auto max-h-[60vh]">
+                                <div class="p-3">${table}</div>
+                            </div>`;
+                        chartContainer.innerHTML = charts + tableCard;
+
+                        // Interpretation
+                        const top = rows.slice(0, 5).map(r => `${r.name}: ${r.count}`).join(', ');
+                        const interp = rows.length ? `Most outliers: ${top}.` : 'No outliers detected.';
+                        chartContainer.innerHTML += `<div class="mt-2 text-xs text-text-secondary">${interp}</div>`;
+
+                        // Hide correlation area
+                        corrContainer.classList.add('hidden');
+                        corrWrapper.innerHTML = '';
+                        corrNotes.textContent = '';
+                        document.getElementById('correlation-heatmap').innerHTML = '';
+                    } catch (e) {
+                        chartContainer.innerHTML = '<div class="text-sm text-red-600">Error loading outlier analysis.</div>';
+                    }
                 } else {
                     // For non-correlation tabs, hide correlation area and keep chart area empty
                     corrContainer.classList.add('hidden');

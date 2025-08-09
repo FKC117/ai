@@ -207,6 +207,33 @@ def get_summary_statistics_data(dataset_id: int) -> dict:
                         }
                     )
 
+    # Outlier analysis (IQR) for numeric columns
+    outlier_analysis: dict = {}
+    for col in numeric_cols:
+        col_data = pd.to_numeric(df[col], errors='coerce').dropna()
+        if len(col_data) == 0:
+            continue
+        q1 = float(col_data.quantile(0.25))
+        q3 = float(col_data.quantile(0.75))
+        iqr = q3 - q1
+        if iqr <= 0:
+            lower = q1
+            upper = q3
+            mask = pd.Series([False] * len(col_data), index=col_data.index)
+        else:
+            lower = q1 - 1.5 * iqr
+            upper = q3 + 1.5 * iqr
+            mask = (col_data < lower) | (col_data > upper)
+        count = int(mask.sum())
+        percentage = float(count / max(1, len(col_data)))
+        outlier_analysis[str(col)] = {
+            'count': count,
+            'percentage': percentage,
+            'lower_bound': float(lower),
+            'upper_bound': float(upper),
+        }
+    summary_stats['outlier_analysis'] = outlier_analysis
+
     # Comprehensive HTML table
     summary_stats['comprehensive_table'] = create_comprehensive_summary_table(summary_stats)
 

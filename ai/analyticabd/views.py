@@ -40,6 +40,7 @@ import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import seaborn as sns
+from .ai.cache_manager import CacheManager
 
 # Create your views here.
 def home(request):
@@ -450,6 +451,13 @@ def correlation_heatmap(request, dataset_id):
         import numpy as np
         from .analytics_service import read_dataset_file
 
+        # Try cache first
+        cache = CacheManager()
+        cache_key = cache.generate_cache_key('img:correlation_heatmap', {'dataset_id': dataset_id})
+        cached = cache.get_cached_response(cache_key)
+        if cached:
+            return HttpResponse(cached, content_type='image/png')
+
         df = read_dataset_file(dataset)
         numeric_cols = df.select_dtypes(include=['number']).columns
         if len(numeric_cols) < 2:
@@ -478,7 +486,9 @@ def correlation_heatmap(request, dataset_id):
         fig.savefig(buf, format='png', dpi=150)
         plt.close(fig)
         buf.seek(0)
-        return HttpResponse(buf.getvalue(), content_type='image/png')
+        png_bytes = buf.getvalue()
+        cache.set_cached_response(cache_key, png_bytes)
+        return HttpResponse(png_bytes, content_type='image/png')
     except UserDataset.DoesNotExist:
         return JsonResponse({'error': 'Dataset not found'}, status=404)
     except Exception as e:
@@ -500,6 +510,17 @@ def distributions_image(request, dataset_id):
 
         top = int(request.GET.get('top', 12))
         bins = int(request.GET.get('bins', 20))
+
+        cache = CacheManager()
+        query = {
+            'dataset_id': dataset_id,
+            'top': top,
+            'bins': bins,
+        }
+        cache_key = cache.generate_cache_key('img:distributions', query)
+        cached = cache.get_cached_response(cache_key)
+        if cached:
+            return HttpResponse(cached, content_type='image/png')
 
         df = read_dataset_file(dataset)
         numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
@@ -568,11 +589,117 @@ def distributions_image(request, dataset_id):
         fig.savefig(buf, format='png', dpi=150)
         plt.close(fig)
         buf.seek(0)
-        return HttpResponse(buf.getvalue(), content_type='image/png')
+        png_bytes = buf.getvalue()
+        cache.set_cached_response(cache_key, png_bytes)
+        return HttpResponse(png_bytes, content_type='image/png')
     except UserDataset.DoesNotExist:
         return JsonResponse({'error': 'Dataset not found'}, status=404)
     except Exception as e:
         return JsonResponse({'error': f'Error generating distributions: {str(e)}'}, status=500)
+
+
+@login_required
+def outliers_image(request, dataset_id):
+    """Return a PNG grid (2 columns) of boxplots for variables with highest outlier counts."""
+    try:
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        from .analytics_service import read_dataset_file
+        import numpy as np
+        import pandas as pd
+
+        top = int(request.GET.get('top', 12))
+        k = float(request.GET.get('iqr', 1.5))
+
+        cache = CacheManager()
+        query = {
+            'dataset_id': dataset_id,
+            'top': top,
+            'iqr': k,
+        }
+        cache_key = cache.generate_cache_key('img:outliers', query)
+        cached = cache.get_cached_response(cache_key)
+        if cached:
+            return HttpResponse(cached, content_type='image/png')
+
+        df = read_dataset_file(dataset)
+        numeric_cols = df.select_dtypes(include=['number']).columns.tolist()
+        if len(numeric_cols) == 0:
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.text(0.5, 0.5, 'No numeric variables to analyze', ha='center', va='center')
+            ax.axis('off')
+        else:
+            # Compute outlier counts via IQR
+            ranking = []
+            for c in numeric_cols:
+                s = pd.to_numeric(df[c], errors='coerce').dropna()
+                if len(s) == 0:
+                    continue
+                q1 = float(s.quantile(0.25))
+                q3 = float(s.quantile(0.75))
+                iqr = q3 - q1
+                if iqr <= 0:
+                    lower = q1
+                    upper = q3
+                    mask = pd.Series([False] * len(s), index=s.index)
+                else:
+                    lower = q1 - k * iqr
+                    upper = q3 + k * iqr
+                    mask = (s < lower) | (s > upper)
+                ranking.append((c, int(mask.sum()), lower, upper))
+
+            if not ranking:
+                fig, ax = plt.subplots(figsize=(6, 4))
+                ax.text(0.5, 0.5, 'No data for outliers', ha='center', va='center')
+                ax.axis('off')
+            else:
+                ranking.sort(key=lambda x: x[1], reverse=True)
+                cols = 2
+                names = [c for c, _, _, _ in ranking[:top]]
+                n = len(names)
+                rows = max(1, int(np.ceil(n / cols)))
+                fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5))
+                if rows == 1 and cols == 1:
+                    axes = np.array([[axes]])
+                elif rows == 1:
+                    axes = np.array([axes])
+                elif cols == 1:
+                    axes = np.array([[ax] for ax in axes])
+
+                idx = 0
+                for r in range(rows):
+                    for c in range(cols):
+                        ax = axes[r, c]
+                        if idx < n:
+                            colname = names[idx]
+                            s = pd.to_numeric(df[colname], errors='coerce').dropna()
+                            sns.boxplot(x=s, ax=ax, color='#1a365d')
+                            # Draw IQR bounds lines
+                            q1 = float(s.quantile(0.25))
+                            q3 = float(s.quantile(0.75))
+                            iqr = q3 - q1
+                            if iqr > 0:
+                                lower = q1 - k * iqr
+                                upper = q3 + k * iqr
+                                ax.axvline(lower, color='#ef4444', linestyle='--', linewidth=1)
+                                ax.axvline(upper, color='#ef4444', linestyle='--', linewidth=1)
+                            ax.set_title(f'{colname} (Boxplot)', fontsize=9)
+                            idx += 1
+                        else:
+                            ax.axis('off')
+                plt.tight_layout()
+
+        from io import BytesIO
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        png_bytes = buf.getvalue()
+        cache.set_cached_response(cache_key, png_bytes)
+        return HttpResponse(png_bytes, content_type='image/png')
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating outliers: {str(e)}'}, status=500)
 
 @login_required
 def get_user_datasets(request):
