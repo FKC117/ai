@@ -469,8 +469,10 @@ def correlation_heatmap(request, dataset_id):
         else:
             corr = df[numeric_cols].corr()
             # Plot heatmap
-            fig, ax = plt.subplots(figsize=(max(6, len(numeric_cols) * 0.5),
-                                            max(4, len(numeric_cols) * 0.4)))
+            fig, ax = plt.subplots(
+                figsize=(max(6, len(numeric_cols) * 0.5), max(4, len(numeric_cols) * 0.4)),
+                constrained_layout=True,
+            )
             sns.heatmap(
                 corr,
                 vmin=-1, vmax=1, center=0,
@@ -479,11 +481,10 @@ def correlation_heatmap(request, dataset_id):
                 ax=ax
             )
             ax.set_title(f'Correlation Heatmap: {dataset.name}', fontsize=10)
-            plt.tight_layout()
 
         from io import BytesIO
         buf = BytesIO()
-        fig.savefig(buf, format='png', dpi=150)
+        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig)
         buf.seek(0)
         png_bytes = buf.getvalue()
@@ -552,7 +553,7 @@ def distributions_image(request, dataset_id):
             n = len(ordered_cols)
             cols = 2
             rows = max(1, int(np.ceil(n / cols)))
-            fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5))
+            fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5), constrained_layout=True)
             if rows == 1 and cols == 1:
                 axes = np.array([[axes]])
             elif rows == 1:
@@ -582,11 +583,11 @@ def distributions_image(request, dataset_id):
                         idx += 1
                     else:
                         ax.axis('off')
-            plt.tight_layout()
+            # spacing handled by constrained_layout
 
         from io import BytesIO
         buf = BytesIO()
-        fig.savefig(buf, format='png', dpi=150)
+        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig)
         buf.seek(0)
         png_bytes = buf.getvalue()
@@ -657,7 +658,7 @@ def outliers_image(request, dataset_id):
                 names = [c for c, _, _, _ in ranking[:top]]
                 n = len(names)
                 rows = max(1, int(np.ceil(n / cols)))
-                fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5))
+                fig, axes = plt.subplots(rows, cols, figsize=(cols * 5, rows * 3.5), constrained_layout=True)
                 if rows == 1 and cols == 1:
                     axes = np.array([[axes]])
                 elif rows == 1:
@@ -686,11 +687,11 @@ def outliers_image(request, dataset_id):
                             idx += 1
                         else:
                             ax.axis('off')
-                plt.tight_layout()
+                # spacing handled by constrained_layout
 
         from io import BytesIO
         buf = BytesIO()
-        fig.savefig(buf, format='png', dpi=150)
+        fig.savefig(buf, format='png', dpi=150, bbox_inches='tight', pad_inches=0.1)
         plt.close(fig)
         buf.seek(0)
         png_bytes = buf.getvalue()

@@ -345,7 +345,7 @@
                             <div class="space-y-1">
                                 <button class="statistical-test-btn w-full text-left p-2 text-sm hover:bg-primary-50 rounded transition-colors" data-test="summary-stats">
                                     <div class="flex items-center justify-between">
-                                        <span>Summary Statistics</span>
+                                        <span>EDA (Exploratory Data Analysis)</span>
                                         <svg class="w-3 h-3 text-text-secondary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
                                         </svg>
@@ -867,14 +867,22 @@
                             Outlier Analysis
                         </button>
                         <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-summary">
-                            Summary Statistics
+                            EDA (Exploratory Data Analysis)
                         </button>
                     </div>
 
                     <!-- Summary Statistics Content (Hidden by default) -->
                     <div class="hidden" id="summary-statistics-content">
                         <div class="flex items-center justify-between mb-3">
-                            <h3 class="text-lg font-semibold text-primary">Summary Statistics</h3>
+                            <div class="flex items-center gap-3">
+                                <h3 class="text-lg font-semibold text-primary">EDA (Exploratory Data Analysis)</h3>
+                                <div class="flex items-center gap-2 text-xs">
+                                    <div class="w-40 bg-gray-200 rounded h-2 overflow-hidden">
+                                        <div id="eda-progress-bar" class="bg-primary h-2 rounded" style="width: 0%"></div>
+                                    </div>
+                                    <span id="eda-progress-text" class="text-text-secondary">0%</span>
+                                </div>
+                            </div>
                             <button id="add-summary-to-report-btn" class="px-3 py-1 rounded text-xs"
                                     style="background-color:#2563eb;color:#ffffff;border:1px solid #1e40af;">Add summary to report</button>
                         </div>
@@ -1054,7 +1062,7 @@
                         </svg>
                     </div>
                     <div class="bg-accent-50 rounded-lg p-3 max-w-full chat-content-resizable">
-                        <p class="text-sm text-text-primary">Hi! I'm here to help you interpret your dataset summary statistics. I can help you understand the data quality, distribution patterns, and variable characteristics. What would you like to explore?</p>
+                        <p class="text-sm text-text-primary">Hi! I'm here to help you explore your dataset (EDA). I can help you understand data quality, distributions, correlations, outliers and key characteristics. What would you like to explore?</p>
                     </div>
                 </div>
 
@@ -1523,7 +1531,7 @@
                     
                     // Update AI context info
                     if (aiContextInfo) {
-                        aiContextInfo.textContent = `Dataset: ${datasets[index].name} | Analysis: ${currentAnalysisType || 'Summary Statistics'}`;
+                        aiContextInfo.textContent = `Dataset: ${datasets[index].name} | Analysis: ${currentAnalysisType || 'EDA'}`;
                     }
                     
                     // Reset AI data button if dataset changes
@@ -1768,6 +1776,18 @@
                         
                         // Minimize upload section
                         minimizeUploadSection();
+
+                        // Land the user on EDA view immediately with a toast message
+                        try {
+                            // Switch main tabs to EDA tab
+                            document.getElementById('tab-summary').click();
+                            // Show small toast/notice
+                            const notice = document.createElement('div');
+                            notice.className = 'fixed top-4 right-4 z-50 bg-primary text-white text-sm px-3 py-2 rounded shadow';
+                            notice.textContent = 'EDA initialized for your dataset.';
+                            document.body.appendChild(notice);
+                            setTimeout(() => notice.remove(), 2000);
+                        } catch (e) {}
                         
                         // Hide progress after a delay
                         setTimeout(() => {
@@ -2491,7 +2511,7 @@
                 document.getElementById('main-chart-container').classList.add('hidden');
                 
                 // Set current analysis type for AI chat
-                currentAnalysisType = 'Summary Statistics';
+                currentAnalysisType = 'EDA';
                 
                 // Update AI context info if available
                 if (aiContextInfo && currentDatasetName) {
@@ -2504,7 +2524,7 @@
                 
                 // Record the summary statistics interaction
                 if (currentDataset) {
-                    recordInteraction('summary_stats', `Viewed summary statistics for dataset: ${currentDataset.name}`, {
+                    recordInteraction('summary_stats', `Viewed EDA for dataset: ${currentDataset.name}`, {
                         dataset_id: currentDataset.id,
                         dataset_name: currentDataset.name,
                         rows: currentDataset.rows,
@@ -2726,7 +2746,7 @@
                     // Show appropriate content based on tab
                     const tabId = this.id;
                     if (tabId === 'tab-summary') {
-                        // Show summary statistics content
+                        // Show EDA content
                         document.getElementById('summary-statistics-content').classList.remove('hidden');
                         document.getElementById('main-chart-container').classList.add('hidden');
                     } else {
@@ -2926,7 +2946,7 @@
                         const payload = {
                             dataset_id: window.currentDatasetId,
                             session_id: window.currentSessionId,
-                            title: 'Summary Statistics',
+                            title: 'EDA',
                             content: '', // let backend generate clean markdown
                             section_type: 'summary_statistics',
                             metadata: { analysis_type: 'summary_statistics' }
@@ -3235,7 +3255,22 @@
                     // Load chat history for this dataset
                     loadChatHistory();
                     
-                    // Save state to localStorage
+                        // Update EDA progress (heuristic): sections available
+                        try {
+                            const totalSections = 4; // overview, variable table, data quality, distributions
+                            let done = 0;
+                            if (data.dataset_overview) done += 1;
+                            if (data.variable_summary) done += 1;
+                            if (data.data_quality) done += 1;
+                            if (data.distribution_insights) done += 1;
+                            const pct = Math.round((done / totalSections) * 100);
+                            const bar = document.getElementById('eda-progress-bar');
+                            const txt = document.getElementById('eda-progress-text');
+                            if (bar) bar.style.width = pct + '%';
+                            if (txt) txt.textContent = pct + '%';
+                        } catch(e) {}
+
+                        // Save state to localStorage
                     saveStateToStorage();
                 }
             }
@@ -3281,7 +3316,7 @@
             passDataButton.addEventListener('click', function() {
                 if (window.currentDatasetId) {
                     // Update context info
-                    aiContextInfo.textContent = `Dataset: ${window.currentDatasetName || 'Current Dataset'} | Analysis: ${window.currentAnalysisType || 'Summary Statistics'}`;
+                    aiContextInfo.textContent = `Dataset: ${window.currentDatasetName || 'Current Dataset'} | Analysis: ${window.currentAnalysisType || 'EDA'}`;
                     
                     // Add system message to chat
                     const systemMessage = document.createElement('div');
@@ -3302,7 +3337,7 @@
                     // Store context in conversation history
                     window.conversationHistory.push({
                         role: 'system',
-                        content: `Dataset loaded: ${window.currentDatasetName || 'Current Dataset'} | Analysis type: ${window.currentAnalysisType || 'Summary Statistics'}`
+                        content: `Dataset loaded: ${window.currentDatasetName || 'Current Dataset'} | Analysis type: ${window.currentAnalysisType || 'EDA'}`
                     });
                     
                     // Update button state
@@ -3528,7 +3563,7 @@
                     'tab-distributions': 'Variable Distributions',
                     'tab-correlation': 'Variable Correlation Matrix',
                     'tab-outliers': 'Outlier Analysis',
-                    'tab-summary': 'Summary Statistics Overview'
+                    'tab-summary': 'EDA Overview'
                 };
                 
                 const titleElement = chartContainer.parentElement.querySelector('h3');
