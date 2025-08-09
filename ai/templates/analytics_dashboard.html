@@ -839,6 +839,8 @@
                             </div>
                         </div>
                         <div class="flex items-center space-x-2">
+                            <button id="add-eda-to-report" class="px-3 py-1 rounded text-xs"
+                                    style="background-color:#2563eb;color:#ffffff;border:1px solid #1e40af;">Add EDA to report</button>
                             <button class="p-2 text-text-secondary hover:text-primary transition-colors" title="Fullscreen">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"/>
@@ -875,15 +877,13 @@
                     <div class="hidden" id="summary-statistics-content">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
-                            <h3 class="text-lg font-semibold text-primary">Summary Statistics</h3>
+                                <h3 class="text-lg font-semibold text-primary">Summary Statistics</h3>
                                 <div class="flex items-center gap-2 text-xs">
                                     <div class="w-40 bg-gray-200 rounded h-2 overflow-hidden">
                                         <div id="eda-progress-bar" class="bg-primary h-2 rounded" style="width: 0%"></div>
                                     </div>
                                 </div>
                             </div>
-                            <button id="add-summary-to-report-btn" class="px-3 py-1 rounded text-xs"
-                                    style="background-color:#2563eb;color:#ffffff;border:1px solid #1e40af;">Add summary to report</button>
                         </div>
                         <!-- Summary Overview -->
                     <div class="card mb-6">
@@ -2926,47 +2926,55 @@
                 }
             });
 
-            // Wire Add summary to report
-            const addSummaryBtn = document.getElementById('add-summary-to-report-btn');
-            if (addSummaryBtn && !addSummaryBtn.dataset.bound) {
-                addSummaryBtn.dataset.bound = '1';
-                addSummaryBtn.addEventListener('click', async () => {
+            // Wire Add EDA to report (Analysis Workspace header button)
+            const addEdaBtn = document.getElementById('add-eda-to-report');
+            if (addEdaBtn && !addEdaBtn.dataset.bound) {
+                addEdaBtn.dataset.bound = '1';
+                addEdaBtn.addEventListener('click', async () => {
                     if (!window.currentDatasetId || !window.currentSessionId) {
                         alert('Please select a dataset first.');
                         return;
                     }
                     try {
-                        const res = await fetch(`/api/summary-statistics/${window.currentDatasetId}/`);
-                        if (!res.ok) throw new Error('Failed to load summary');
-                        const summaryData = await res.json();
-                        // cache for later if needed
-                        window.__lastSummaryData = summaryData;
+                        // Prepare image URLs for distributions, correlation and outliers
+                        const datasetId = window.currentDatasetId;
+                        const images = [
+                            { id: 'eda_dist', src: `{% url "distributions_image" 0 %}`.replace('0', datasetId) + `?top=12&bins=20` },
+                            { id: 'eda_corr', src: `{% url "correlation_heatmap" 0 %}`.replace('0', datasetId) },
+                            { id: 'eda_out', src: `{% url "outliers_image" 0 %}`.replace('0', datasetId) + `?top=12&iqr=1.5` },
+                        ];
 
                         const payload = {
-                            dataset_id: window.currentDatasetId,
+                            dataset_id: datasetId,
                             session_id: window.currentSessionId,
                             title: 'EDA',
-                            content: '', // let backend generate clean markdown
+                            content: '', // backend will auto-generate summary for summary_statistics
                             section_type: 'summary_statistics',
-                            metadata: { analysis_type: 'summary_statistics' }
+                            metadata: {
+                                analysis_type: 'summary_statistics',
+                                report_data: {
+                                    images: images.map(img => ({ type: 'url', src: img.src, id: img.id }))
+                                }
+                            }
                         };
+
                         const saveRes = await fetch('/api/v1/report/add/', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
                             body: JSON.stringify(payload)
                         });
                         if (saveRes.ok) {
-                            addSummaryBtn.textContent = 'Added';
-                            addSummaryBtn.disabled = true;
-                            addSummaryBtn.style.backgroundColor = '#16a34a';
-                            addSummaryBtn.style.borderColor = '#15803d';
+                            addEdaBtn.textContent = 'Added';
+                            addEdaBtn.disabled = true;
+                            addEdaBtn.style.backgroundColor = '#16a34a';
+                            addEdaBtn.style.borderColor = '#15803d';
                         } else {
-                            const err = await saveRes.json().catch(() => ({ error: 'Failed to add summary to report' }));
-                            alert(err.error || 'Failed to add summary to report');
+                            const err = await saveRes.json().catch(() => ({ error: 'Failed to add EDA to report' }));
+                            alert(err.error || 'Failed to add EDA to report');
                         }
                     } catch (e) {
                         console.error(e);
-                        alert('Failed to add summary to report');
+                        alert('Failed to add EDA to report');
                     }
                 });
             }
