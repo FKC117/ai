@@ -26,6 +26,14 @@ try:
 except Exception:
     DOCX_AVAILABLE = False
 
+from .session_manager import (
+    set_current_dataset_and_session,
+    get_current_session_id_and_ui_state,
+    save_dataset_ui_state,
+    resolve_session_for,
+    get_chat_history_for_session,
+)
+
 # Create your views here.
 def home(request):
     return render(request, 'homepage.html')
@@ -474,16 +482,7 @@ def get_user_state(request):
             })
         
         # Get dataset-specific UI state if current dataset exists
-        current_session_id = None
-        ui_state = {}
-        if user_pref.current_dataset:
-            dataset_ui_state = DatasetUIState.objects.filter(
-                user=request.user,
-                dataset=user_pref.current_dataset
-            ).first()
-            if dataset_ui_state:
-                current_session_id = dataset_ui_state.current_session.id if dataset_ui_state.current_session else None
-                ui_state = dataset_ui_state.ui_state
+        current_session_id, ui_state = get_current_session_id_and_ui_state(request.user)
         
         return JsonResponse({
             'datasets': dataset_list,
@@ -505,35 +504,7 @@ def set_current_dataset(request):
         if not dataset_id:
             return JsonResponse({'error': 'Dataset ID is required'}, status=400)
         
-        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
-        
-        # Update user preferences
-        user_pref, created = UserPreference.objects.get_or_create(user=request.user)
-        user_pref.current_dataset = dataset
-        user_pref.save()
-        
-        # Create or update analysis session
-        session, created = AnalysisSession.objects.get_or_create(
-            user=request.user,
-            dataset=dataset,
-            is_active=True,
-            defaults={'session_name': f"Analysis of {dataset.name}"}
-        )
-        
-        if not created:
-            session.updated_at = datetime.now()
-            session.save()
-        
-        # Store current session in dataset-specific UI state
-        dataset_ui_state, created = DatasetUIState.objects.get_or_create(
-            user=request.user,
-            dataset=dataset,
-            defaults={'current_session': session}
-        )
-        
-        if not created:
-            dataset_ui_state.current_session = session
-            dataset_ui_state.save()
+        dataset, session = set_current_dataset_and_session(request.user, dataset_id)
         
         return JsonResponse({
             'success': True,
@@ -708,18 +679,7 @@ def save_ui_state(request):
         if not dataset_id:
             return JsonResponse({'error': 'dataset_id is required'}, status=400)
         
-        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
-        
-        # Save to dataset-specific UI state
-        dataset_ui_state, created = DatasetUIState.objects.get_or_create(
-            user=request.user,
-            dataset=dataset,
-            defaults={'ui_state': ui_state}
-        )
-        
-        if not created:
-            dataset_ui_state.ui_state = ui_state
-            dataset_ui_state.save()
+        save_dataset_ui_state(request.user, int(dataset_id), ui_state)
         
         return JsonResponse({
             'success': True,
@@ -938,18 +898,7 @@ def get_chat_history(request):
         if not dataset_id:
             return JsonResponse({'error': 'Dataset ID is required'}, status=400)
         
-        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
-        
-        # Get session
-        session = None
-        if session_id:
-            try:
-                session = AnalysisSession.objects.get(id=int(session_id), user=request.user, dataset=dataset)
-            except (ValueError, AnalysisSession.DoesNotExist):
-                pass
-        
-        if not session:
-            session = AnalysisSession.objects.filter(user=request.user, dataset=dataset, is_active=True).first()
+        session = resolve_session_for(request.user, int(dataset_id), int(session_id) if session_id else None)
         
         if not session:
             return JsonResponse({'messages': [], 'session_id': None})
