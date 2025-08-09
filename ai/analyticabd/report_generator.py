@@ -14,6 +14,9 @@ from datetime import datetime
 from io import BytesIO
 import re
 from bs4 import BeautifulSoup, NavigableString
+import requests
+from urllib.parse import urljoin
+from django.conf import settings
 
 try:
     from docx import Document
@@ -162,6 +165,50 @@ def render_table_from_metadata(doc, table_data):
         print(f"❌ Error rendering table from metadata: {e}")
     
     return False
+
+
+def render_images_from_metadata(doc, images, base_url=None, cookies=None):
+    """Render images from metadata (supports type=url) with optional captions."""
+    try:
+        if not images:
+            return 0
+        added = 0
+        for img in images:
+            src = img.get('src')
+            if not src:
+                continue
+            try:
+                # Normalize to absolute URL if a base_url is given and src is relative
+                src_url = src
+                if base_url and isinstance(src, str) and (src.startswith('/') or not src.lower().startswith('http')):
+                    # Fix common typos in path keys
+                    fixed = src.replace('analyysis', 'analysis')
+                    if not fixed.startswith('/'):
+                        fixed = '/' + fixed
+                    src_url = urljoin(base_url, fixed)
+
+                resp = requests.get(src_url, timeout=10, cookies=cookies or {})
+                if resp.status_code == 200:
+                    try:
+                        pic_stream = BytesIO(resp.content)
+                        doc.add_picture(pic_stream, width=Inches(6.0))
+                        caption = img.get('title') or 'Figure'
+                        cap = doc.add_paragraph(caption)
+                        if cap.runs:
+                            cap.runs[0].font.name = 'Inter'
+                            cap.runs[0].font.size = Pt(9)
+                        added += 1
+                        doc.add_paragraph('')
+                    except Exception as pic_e:
+                        print(f"⚠️ Unable to insert image from {src_url}: {pic_e}")
+                else:
+                    print(f"⚠️ Image fetch failed: {src_url} status {resp.status_code}")
+            except Exception as e:
+                print(f"⚠️ Image fetch exception for {src_url if 'src_url' in locals() else src}: {e}")
+        return added
+    except Exception as e:
+        print(f"❌ Error rendering images: {e}")
+        return 0
 
 
 def process_paragraph(doc, paragraph_text):
@@ -553,19 +600,36 @@ def generate_report_document(request, dataset_id, session_id):
         # Sections - smart ordering by type first, then by order/created_at
         type_priority = {
             'summary_statistics': 10,
-            'data_quality': 20,
+            'distributions': 20,
             'correlation': 30,
-            'outlier_analysis': 40,
-            'visualization': 50,
+            'outliers': 40,
+            'data_quality': 50,
+            'visualization': 60,
             'ai_response': 90,
         }
 
         sections = list(document_obj.sections.all())
         sections.sort(key=lambda s: (type_priority.get(s.section_type, 80), s.order, s.created_at))
 
+        # Insert a top-level EDA heading once if any EDA sections exist
+        any_eda = any((s.metadata or {}).get('eda_subsection') for s in sections)
+        eda_heading_added = False
+
         for section in sections:
             # Section header with DataFlow styling
-            heading = doc.add_heading(section.title, level=2)
+            # If this is an EDA subsection and we haven't added the EDA main heading yet
+            is_eda_sub = (section.metadata or {}).get('eda_subsection') is not None
+            if is_eda_sub and not eda_heading_added:
+                main = doc.add_heading('Exploratory Data Analysis (EDA)', level=1)
+                for run in main.runs:
+                    run.font.name = 'Inter'
+                    run.font.size = Pt(22)
+                    run.font.bold = True
+                    run.font.color.rgb = RGBColor(26, 54, 93)
+                eda_heading_added = True
+
+            heading_level = 3 if is_eda_sub else 2
+            heading = doc.add_heading(section.title, level=heading_level)
             heading.alignment = WD_ALIGN_PARAGRAPH.LEFT
             
             # Style the heading
@@ -588,8 +652,20 @@ def generate_report_document(request, dataset_id, session_id):
             if section.section_type == 'ai_response':
                 process_ai_response_section(doc, content, tables_data)
             else:
-                # For non-AI responses, use the original processing logic
+                # For non-AI responses, render images first (charts), then text, then tables
+                if images_data:
+                    base_url = request.build_absolute_uri('/')
+                    # Pass session cookie for authenticated endpoints
+                    cookies = {}
+                    session_cookie_name = getattr(settings, 'SESSION_COOKIE_NAME', 'sessionid')
+                    if request.COOKIES.get(session_cookie_name):
+                        cookies[session_cookie_name] = request.COOKIES.get(session_cookie_name)
+                    _img_count = render_images_from_metadata(doc, images_data, base_url=base_url, cookies=cookies)
+                    print(f"🖼️ Rendered {_img_count} images for section '{section.title}'")
                 process_non_ai_section(doc, content)
+                if tables_data:
+                    for tbl in tables_data:
+                        render_table_from_metadata(doc, tbl)
 
         # Create document footer
         create_document_footer(doc)

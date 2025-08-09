@@ -1285,6 +1285,188 @@ def add_to_report(request):
         last_section = document.sections.order_by('-order').first()
         next_order = (last_section.order + 1) if last_section else 1
 
+        # If this is an EDA bundle request, create clustered sections and skip duplicates
+        is_eda_bundle = (title or '').strip().lower() in ['eda', 'eda summary', 'eda (exploratory data analysis)']
+        if is_eda_bundle:
+            try:
+                stats = get_summary_statistics_data(dataset.id)
+                filename = dataset.name
+                created_sections = []
+
+                # Helper to check duplicate by eda_subsection
+                def has_section(sub):
+                    try:
+                        return document.sections.filter(metadata__eda_subsection=sub).exists()
+                    except Exception:
+                        return False
+
+                # SUMMARY subsection
+                if not has_section('summary'):
+                    # Auto-generate concise markdown (reuse logic below by setting content)
+                    ov = stats.get('dataset_overview', {})
+                    parts = [
+                        '## Dataset Overview',
+                        f"Total Rows: {ov.get('total_rows', 'N/A')} | Total Columns: {ov.get('total_columns', 'N/A')}\n",
+                        '## Data Quality Report'
+                    ]
+                    for var_name, var_stats in (stats.get('data_quality', {}) or {}).items():
+                        missing_pct = var_stats.get('missing_percentage', 0)
+                        completeness = var_stats.get('completeness', 0)
+                        quality_score = var_stats.get('quality_score', 0)
+                        parts.append(f"- **{var_name}**: Missing {missing_pct:.1%}, Completeness {completeness:.1%}, Quality Score {quality_score:.1f}")
+                    content_summary = '\n'.join(parts)
+                    meta_summary = {'eda_subsection': 'summary'}
+                    # Add comprehensive summary table to metadata
+                    if stats.get('comprehensive_table'):
+                        meta_summary['report_data'] = {'tables': [{
+                            'type': 'html',
+                            'html': stats['comprehensive_table'],
+                            'title': 'Complete Dataset Summary Table'
+                        }]}
+                    ReportSection.objects.create(
+                        document=document,
+                        order=next_order,
+                        title='EDA: Summary Statistics',
+                        content=content_summary,
+                        section_type='summary_statistics',
+                        metadata=meta_summary
+                    )
+                    created_sections.append('summary')
+                    next_order += 1
+
+                # DISTRIBUTIONS subsection
+                if not has_section('distributions'):
+                    dist_img = None
+                    for img in (metadata.get('report_data', {}).get('images', []) if metadata else []):
+                        if str(img.get('id', '')).startswith('eda_dist'):
+                            dist_img = img.get('src')
+                            break
+                    if not dist_img:
+                        dist_img = f"/api/analysis/{dataset.id}/distributions.png?top=12&bins=20"
+                    # Build a compact table of top-variance numeric vars
+                    var_html_rows = []
+                    var_sum = stats.get('variable_summary', {}) or {}
+                    # variable_summary may be dict of {name: meta}
+                    for name, meta in var_sum.items():
+                        if (meta.get('type') or '').lower() == 'numeric':
+                            mean = meta.get('mean')
+                            std = meta.get('std') if meta.get('std') is not None else meta.get('std_dev')
+                            var_html_rows.append(
+                                f"<tr><td style='border:1px solid #ddd;padding:6px;'>{name}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{f'{mean:.2f}' if isinstance(mean,(int,float)) else 'N/A'}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{f'{std:.2f}' if isinstance(std,(int,float)) else 'N/A'}</td></tr>"
+                            )
+                    dist_table_html = (
+                        "<table style=\"border-collapse:collapse;width:100%;margin:8px 0;\"><thead><tr style=\"background:#f8fafc;\"><th style=\"border:1px solid #ddd;padding:6px;text-align:left;\">Variable</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Mean</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Std</th></tr></thead><tbody>"
+                        + ''.join(var_html_rows[:12]) + "</tbody></table>"
+                    )
+                    ReportSection.objects.create(
+                        document=document,
+                        order=next_order,
+                        title=f'EDA: Distribution of Data for {filename}',
+                        content='',
+                        section_type='distributions',
+                        metadata={
+                            'eda_subsection': 'distributions',
+                            'report_data': {
+                                'images': [{'type': 'url', 'src': dist_img, 'title': 'Distributions'}],
+                                'tables': [{'type': 'html', 'html': dist_table_html, 'title': 'Distribution Summary'}]
+                            }
+                        }
+                    )
+                    created_sections.append('distributions')
+                    next_order += 1
+
+                # CORRELATION subsection
+                if not has_section('correlation'):
+                    corr_img = None
+                    for img in (metadata.get('report_data', {}).get('images', []) if metadata else []):
+                        if str(img.get('id', '')).startswith('eda_corr'):
+                            corr_img = img.get('src')
+                            break
+                    if not corr_img:
+                        corr_img = f"/api/analysis/{dataset.id}/heatmap.png"
+                    # Build strong correlations table (if any)
+                    strong = (stats.get('correlation_matrix', {}) or {}).get('strong_correlations', []) or []
+                    corr_rows = []
+                    for item in strong:
+                        v1 = item.get('variable1'); v2 = item.get('variable2'); r = item.get('correlation')
+                        corr_rows.append(
+                            f"<tr><td style='border:1px solid #ddd;padding:6px;'>{v1}</td><td style='border:1px solid #ddd;padding:6px;'>{v2}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{f'{r:.3f}' if isinstance(r,(int,float)) else 'N/A'}</td></tr>"
+                        )
+                    corr_table_html = (
+                        "<table style=\"border-collapse:collapse;width:100%;margin:8px 0;\"><thead><tr style=\"background:#f8fafc;\"><th style=\"border:1px solid #ddd;padding:6px;text-align:left;\">Variable 1</th><th style=\"border:1px solid #ddd;padding:6px;text-align:left;\">Variable 2</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Correlation</th></tr></thead><tbody>"
+                        + ''.join(corr_rows[:24]) + "</tbody></table>"
+                    )
+                    ReportSection.objects.create(
+                        document=document,
+                        order=next_order,
+                        title=f'EDA: Correlation Matrix for {filename}',
+                        content='',
+                        section_type='correlation',
+                        metadata={
+                            'eda_subsection': 'correlation',
+                            'report_data': {
+                                'images': [{'type': 'url', 'src': corr_img, 'title': 'Correlation Heatmap'}],
+                                'tables': ([{'type': 'html', 'html': corr_table_html, 'title': 'Strong Correlations'}] if corr_rows else [])
+                            }
+                        }
+                    )
+                    created_sections.append('correlation')
+                    next_order += 1
+
+                # OUTLIERS subsection
+                if not has_section('outliers'):
+                    out_img = None
+                    for img in (metadata.get('report_data', {}).get('images', []) if metadata else []):
+                        if str(img.get('id', '')).startswith('eda_out'):
+                            out_img = img.get('src')
+                            break
+                    if not out_img:
+                        out_img = f"/api/analysis/{dataset.id}/outliers.png?top=12&iqr=1.5"
+                    out_info = stats.get('outlier_analysis', {}) or {}
+                    out_rows = []
+                    for name, meta_o in out_info.items():
+                        cnt = meta_o.get('count', 0)
+                        pct = meta_o.get('percentage', 0.0)
+                        lb = meta_o.get('lower_bound'); ub = meta_o.get('upper_bound')
+                        out_rows.append(
+                            f"<tr><td style='border:1px solid #ddd;padding:6px;'>{name}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{cnt}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{pct:.1%}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{f'{lb:.2f}' if isinstance(lb,(int,float)) else 'N/A'}</td><td style='border:1px solid #ddd;padding:6px;text-align:right;'>{f'{ub:.2f}' if isinstance(ub,(int,float)) else 'N/A'}</td></tr>"
+                        )
+                    out_table_html = (
+                        "<table style=\"border-collapse:collapse;width:100%;margin:8px 0;\"><thead><tr style=\"background:#f8fafc;\"><th style=\"border:1px solid #ddd;padding:6px;text-align:left;\">Variable</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Outliers</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">%</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Lower bound</th><th style=\"border:1px solid #ddd;padding:6px;text-align:right;\">Upper bound</th></tr></thead><tbody>"
+                        + ''.join(sorted(out_rows, reverse=True)[:24]) + "</tbody></table>"
+                    )
+                    ReportSection.objects.create(
+                        document=document,
+                        order=next_order,
+                        title=f'EDA: Outlier Analysis for {filename}',
+                        content='',
+                        section_type='outliers',
+                        metadata={
+                            'eda_subsection': 'outliers',
+                            'report_data': {
+                                'images': [{'type': 'url', 'src': out_img, 'title': 'Outliers (Boxplots)'}],
+                                'tables': ([{'type': 'html', 'html': out_table_html, 'title': 'Outlier Summary'}] if out_rows else [])
+                            }
+                        }
+                    )
+                    created_sections.append('outliers')
+                    next_order += 1
+
+                # Mark UI state (eda_added=true)
+                try:
+                    # Merge flag in UI state
+                    from .session_manager import save_dataset_ui_state
+                    existing = {'eda_added': True}
+                    save_dataset_ui_state(request.user, dataset.id, existing)
+                except Exception:
+                    pass
+
+                print(f"✅ EDA sections created: {', '.join(created_sections) if created_sections else 'none (skipped duplicates)'}")
+                return JsonResponse({'success': True, 'message': 'EDA added to report', 'sections_created': created_sections})
+            except Exception as e:
+                print(f"❌ Error creating EDA sections: {e}")
+                return JsonResponse({'error': 'Error creating EDA sections'}, status=500)
+
         # If summary_statistics and no content provided, auto-generate a concise markdown block
         if (section_type == 'summary_statistics') and (not content):
             try:

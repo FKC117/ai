@@ -137,17 +137,29 @@ LOGIN_REDIRECT_URL = '/'
 # AUTH_USER_MODEL = 'analyticabd.CustomUser'
 
 # AI and Caching Configuration
-CACHES = {
-    'default': {
-        'BACKEND': 'django_redis.cache.RedisCache',
-        'LOCATION': os.getenv('REDIS_URL', 'redis://localhost:6379/1'),
-        'OPTIONS': {
-            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-        },
-        'KEY_PREFIX': 'dataflow_analytics',
-        'TIMEOUT': int(os.getenv('CACHE_TTL', 3600)),
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/1')
+USE_REDIS = os.getenv('USE_REDIS', 'true').lower() == 'true'
+
+if USE_REDIS:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django_redis.cache.RedisCache',
+            'LOCATION': REDIS_URL,
+            'OPTIONS': {
+                'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            },
+            'KEY_PREFIX': 'dataflow_analytics',
+            'TIMEOUT': int(os.getenv('CACHE_TTL', 3600)),
+        }
     }
-}
+else:
+    CACHES = {
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'dataflow_analytics_locmem',
+            'TIMEOUT': int(os.getenv('CACHE_TTL', 3600)),
+        }
+    }
 
 # AI Configuration
 LLM_CACHE_TIMEOUT = 1800  # 30 minutes
