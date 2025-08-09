@@ -867,7 +867,7 @@
                             Outlier Analysis
                         </button>
                         <button class="px-4 py-2 text-sm font-medium text-text-secondary hover:text-primary transition-colors" id="tab-summary">
-                            EDA (Exploratory Data Analysis)
+                            Summary Statistics
                         </button>
                     </div>
 
@@ -875,12 +875,11 @@
                     <div class="hidden" id="summary-statistics-content">
                         <div class="flex items-center justify-between mb-3">
                             <div class="flex items-center gap-3">
-                                <h3 class="text-lg font-semibold text-primary">EDA (Exploratory Data Analysis)</h3>
+                            <h3 class="text-lg font-semibold text-primary">Summary Statistics</h3>
                                 <div class="flex items-center gap-2 text-xs">
                                     <div class="w-40 bg-gray-200 rounded h-2 overflow-hidden">
                                         <div id="eda-progress-bar" class="bg-primary h-2 rounded" style="width: 0%"></div>
                                     </div>
-                                    <span id="eda-progress-text" class="text-text-secondary">0%</span>
                                 </div>
                             </div>
                             <button id="add-summary-to-report-btn" class="px-3 py-1 rounded text-xs"
@@ -1531,7 +1530,7 @@
                     
                     // Update AI context info
                     if (aiContextInfo) {
-                        aiContextInfo.textContent = `Dataset: ${datasets[index].name} | Analysis: ${currentAnalysisType || 'EDA'}`;
+                        aiContextInfo.textContent = `Dataset: ${datasets[index].name} | Analysis: ${currentAnalysisType || 'Summary Statistics'}`;
                     }
                     
                     // Reset AI data button if dataset changes
@@ -3265,9 +3264,7 @@
                             if (data.distribution_insights) done += 1;
                             const pct = Math.round((done / totalSections) * 100);
                             const bar = document.getElementById('eda-progress-bar');
-                            const txt = document.getElementById('eda-progress-text');
                             if (bar) bar.style.width = pct + '%';
-                            if (txt) txt.textContent = pct + '%';
                         } catch(e) {}
 
                         // Save state to localStorage
@@ -3563,7 +3560,7 @@
                     'tab-distributions': 'Variable Distributions',
                     'tab-correlation': 'Variable Correlation Matrix',
                     'tab-outliers': 'Outlier Analysis',
-                    'tab-summary': 'EDA Overview'
+                    'tab-summary': 'Summary Statistics Overview'
                 };
                 
                 const titleElement = chartContainer.parentElement.querySelector('h3');
