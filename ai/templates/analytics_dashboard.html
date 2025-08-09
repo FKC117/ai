@@ -279,6 +279,25 @@
                     </div>
                 </div>
 
+                <!-- Account & Billing Overview -->
+                <div class="mb-6">
+                    <h3 class="text-lg font-semibold text-primary mb-3">Account & Billing</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-white rounded-lg border border-border-light p-4 shadow-sm">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Account</h4>
+                            <div class="text-sm text-text-primary space-y-1" id="account-info">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
+                        <div class="bg-white rounded-lg border border-border-light p-4 shadow-sm">
+                            <h4 class="text-sm font-semibold text-primary mb-2">Billing</h4>
+                            <div class="text-sm text-text-primary space-y-1" id="billing-info">
+                                <!-- Filled dynamically -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Dataset History -->
                 <div class="mb-6">
                     <div class="flex items-center justify-between mb-3">
@@ -1775,8 +1794,28 @@
                 // Set as current dataset
                 currentDatasetIndex = datasets.length - 1;
                 
-                // Save current dataset to backend
-                saveCurrentDataset(newDataset.id);
+                // Update globals for current dataset and its new session
+                window.currentDatasetId = newDataset.id;
+                window.currentDatasetName = newDataset.name;
+                window.currentSessionId = data.session_id || null;
+                
+                // Clear current chat UI while we switch context
+                if (window.chatMessages) {
+                    window.chatMessages.innerHTML = '';
+                }
+                
+                // Save current dataset to backend, then load its chat history to begin the new session
+                saveCurrentDataset(newDataset.id)
+                    .then(() => {
+                        if (typeof loadChatHistory === 'function') {
+                            loadChatHistory();
+                        }
+                    })
+                    .catch(() => {
+                        if (typeof loadChatHistory === 'function') {
+                            loadChatHistory();
+                        }
+                    });
                 
                 // Record the upload interaction
                 recordInteraction('upload', `Uploaded dataset: ${newDataset.name}`, {
@@ -3266,6 +3305,44 @@
                 }
             });
             
+            // Account & Billing Overview (moved to HTML template)
+            
+            // Load chat history for current dataset if available
+            if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
+                loadChatHistory();
+            }
+
+            // Load account & billing overview
+            fetch('{% url "get_account_overview" %}')
+                .then(r => r.json())
+                .then(info => {
+                    if (info && !info.error) {
+                        const a = info.account || {};
+                        const b = info.billing || {};
+                        const accountInfo = document.getElementById('account-info');
+                        const billingInfo = document.getElementById('billing-info');
+                        if (accountInfo) {
+                            accountInfo.innerHTML = `
+                                <div class="flex justify-between"><span class="text-text-secondary">Username</span><span>${a.username || ''}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Email</span><span>${a.email || ''}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Name</span><span>${(a.first_name || '')} ${(a.last_name || '')}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Phone</span><span>${a.phone_number || '-'}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Joined</span><span>${a.joined || ''}</span></div>
+                            `;
+                        }
+                        if (billingInfo) {
+                            billingInfo.innerHTML = `
+                                <div class="flex justify-between"><span class="text-text-secondary">Plan</span><span>${b.plan_name || 'Free'}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Price</span><span>$${b.price_usd || '0.00'} (~৳${b.price_bdt || '0.00'})</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Payment Status</span><span>${b.payment_status || 'pending'}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Payment Time</span><span>${b.payment_at ? new Date(b.payment_at).toLocaleString() : '-'}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">Next Billing</span><span>${b.next_billing_date || '-'}</span></div>
+                                <div class="flex justify-between"><span class="text-text-secondary">This Month Spend</span><span>৳${b.amount_spent_bdt || '0.00'}</span></div>
+                            `;
+                        }
+                    }
+                })
+                .catch(() => {});
 
         });
         

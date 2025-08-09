@@ -28,6 +28,8 @@ urlpatterns = [
     path('api/warning-preferences/', views.get_warning_preferences, name='get_warning_preferences'),
     path('api/update-warning-preferences/', views.update_warning_preferences, name='update_warning_preferences'),
     path('api/save-ui-state/', views.save_ui_state, name='save_ui_state'),
+    path('api/billing/summary/', views.get_user_billing_summary, name='get_user_billing_summary'),
+    path('api/account/overview/', views.get_account_overview, name='get_account_overview'),
     
     # AI Chat endpoints
     path('api/v1/chat/send_message/', views_chat.send_chat_message, name='send_chat_message'),

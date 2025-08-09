@@ -32,6 +32,8 @@ from .session_manager import (
     save_dataset_ui_state,
     resolve_session_for,
     get_chat_history_for_session,
+    get_user_quota_status,
+    get_user_billing_summary as build_billing_summary,
 )
 from .analytics_service import get_summary_statistics_data
 
@@ -1257,3 +1259,44 @@ def download_report(request):
         return JsonResponse({'error': 'dataset_id and session_id are required'}, status=400)
     
     return generate_report_document(request, dataset_id, session_id)
+
+@login_required
+def get_user_billing_summary(request):
+    """Return billing info to show on dashboard (BDT spend only)."""
+    try:
+        quota = get_user_quota_status(request.user)
+        return JsonResponse({
+            'plan_name': quota['plan_name'],
+            'amount_spent_bdt': quota['amount_spent_bdt'],
+        })
+    except Exception as e:
+        return JsonResponse({'error': f'Error fetching billing summary: {str(e)}'}, status=500)
+
+@login_required
+def get_account_overview(request):
+    """Return account info, usage and billing for the dashboard UI."""
+    try:
+        # Basic account info
+        user = request.user
+        profile = getattr(user, 'profile', None)
+        account = {
+            'username': user.username,
+            'email': user.email,
+            'first_name': user.first_name,
+            'last_name': user.last_name,
+            'phone_number': getattr(profile, 'phone_number', None) if profile else None,
+            'country_code': getattr(profile, 'country_code', None) if profile else None,
+            'joined': user.date_joined.strftime('%Y-%m-%d'),
+        }
+
+        # Billing summary
+        billing = build_billing_summary(user)
+
+        # Usage summary (tokens not exposed; only spend)
+        usage = {
+            'amount_spent_bdt': billing['amount_spent_bdt'],
+        }
+
+        return JsonResponse({'account': account, 'billing': billing, 'usage': usage})
+    except Exception as e:
+        return JsonResponse({'error': f'Error fetching account overview: {str(e)}'}, status=500)

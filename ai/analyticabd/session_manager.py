@@ -1,6 +1,9 @@
 from typing import Optional, Tuple, Dict, List
 from django.contrib.auth.models import User
 from django.utils import timezone
+from decimal import Decimal
+from datetime import datetime, timedelta
+from django.db.models import Sum
 
 from .models import (
     UserDataset,
@@ -8,6 +11,10 @@ from .models import (
     DatasetUIState,
     ChatMessage,
     UserPreference,
+    SubscriptionPlan,
+    UserSubscription,
+    TokenUsage,
+    BillingSetting,
 )
 
 
@@ -119,3 +126,67 @@ def get_chat_history_for_session(session: AnalysisSession) -> List[Dict]:
             }
         )
     return chat_history
+
+
+def get_active_plan_for_user(user: User) -> Optional[SubscriptionPlan]:
+    sub = UserSubscription.objects.filter(user=user, is_active=True).select_related('plan').first()
+    return sub.plan if sub else None
+
+
+def get_month_start(dt: datetime) -> datetime:
+    return datetime(dt.year, dt.month, 1, tzinfo=dt.tzinfo)
+
+
+def get_user_monthly_token_usage(user: User, as_of: Optional[datetime] = None) -> int:
+    if as_of is None:
+        as_of = datetime.utcnow()
+    month_start = get_month_start(as_of)
+    total = TokenUsage.objects.filter(user=user, created_at__gte=month_start).aggregate(s=Sum('tokens_used'))['s']
+    return int(total or 0)
+
+
+def get_user_monthly_spend_bdt(user: User, as_of: Optional[datetime] = None) -> Decimal:
+    if as_of is None:
+        as_of = datetime.utcnow()
+    month_start = get_month_start(as_of)
+    total_usd = TokenUsage.objects.filter(user=user, created_at__gte=month_start).aggregate(s=Sum('cost_usd'))['s'] or Decimal('0')
+    rate = BillingSetting.get_rate()
+    return (total_usd * rate).quantize(Decimal('0.01'))
+
+
+def get_user_quota_status(user: User) -> Dict:
+    plan = get_active_plan_for_user(user)
+    monthly_limit = plan.monthly_token_limit if plan else 0
+    used = get_user_monthly_token_usage(user)
+    remaining = max(monthly_limit - used, 0)
+    spend_bdt = get_user_monthly_spend_bdt(user)
+    return {
+        'plan_name': plan.name if plan else 'Free',
+        'monthly_token_limit': monthly_limit,
+        'tokens_used_this_month': used,
+        'tokens_remaining': remaining,
+        'amount_spent_bdt': str(spend_bdt),
+    }
+
+
+def get_active_user_subscription(user: User) -> Optional[UserSubscription]:
+    return UserSubscription.objects.filter(user=user, is_active=True).select_related('plan').first()
+
+
+def get_user_billing_summary(user: User) -> Dict:
+    """Return billing summary for frontend: plan/prices/status/dates and monthly spend in BDT."""
+    active_sub = get_active_user_subscription(user)
+    plan = active_sub.plan if active_sub else get_active_plan_for_user(user)
+
+    amount_bdt = get_user_monthly_spend_bdt(user)
+
+    return {
+        'plan_name': plan.name if plan else 'Free',
+        'price_usd': str(plan.price_usd) if plan else '0.00',
+        'price_bdt': str(plan.price_bdt) if plan else '0.00',
+        'payment_status': active_sub.payment_status if active_sub else 'pending',
+        'payment_at': active_sub.payment_at.isoformat() if (active_sub and active_sub.payment_at) else None,
+        'next_billing_date': active_sub.next_billing_date.isoformat() if (active_sub and active_sub.next_billing_date) else None,
+        'amount_spent_bdt': str(amount_bdt),
+        'usd_to_bdt_rate': str(BillingSetting.get_rate()),
+    }

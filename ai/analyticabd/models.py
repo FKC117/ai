@@ -1,6 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import RegexValidator
+from decimal import Decimal
+from django.utils import timezone
+from datetime import timedelta
 
 # Create your models here.
 
@@ -226,3 +229,98 @@ class ChatMessage(models.Model):
 
     def __str__(self):
         return f"{self.session.session_name} - {self.message_type} - {self.created_at.strftime('%Y-%m-%d %H:%M')}"
+
+
+class SubscriptionPlan(models.Model):
+    """Subscription plan defining monthly token limits and pricing."""
+    name = models.CharField(max_length=100, unique=True)
+    monthly_token_limit = models.PositiveIntegerField(default=0)
+    price_usd = models.DecimalField(max_digits=10, decimal_places=2, default=Decimal('0.00'))
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['price_usd']
+
+    def __str__(self):
+        return f"{self.name} ({self.monthly_token_limit} tok/mo)"
+
+    @property
+    def price_bdt(self):
+        from .models import BillingSetting
+        rate = BillingSetting.get_rate()
+        return (self.price_usd * rate).quantize(Decimal('0.01'))
+
+
+class UserSubscription(models.Model):
+    """Active subscription of a user to a plan."""
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('paid', 'Paid'),
+        ('failed', 'Failed'),
+        ('canceled', 'Canceled'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscriptions')
+    plan = models.ForeignKey(SubscriptionPlan, on_delete=models.PROTECT, related_name='user_subscriptions')
+    start_date = models.DateField(auto_now_add=True)
+    is_active = models.BooleanField(default=True)
+    canceled_at = models.DateTimeField(null=True, blank=True)
+
+    payment_status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    payment_at = models.DateTimeField(null=True, blank=True)
+    next_billing_date = models.DateField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-start_date']
+        indexes = [models.Index(fields=['user', 'is_active'])]
+
+    def __str__(self):
+        return f"{self.user.username} -> {self.plan.name} ({'active' if self.is_active else 'inactive'})"
+
+    def save(self, *args, **kwargs):
+        # Auto-calc next_billing_date on a 30-day interval
+        base_date = None
+        if self.payment_at:
+            base_date = self.payment_at.date()
+        elif self.start_date:
+            base_date = self.start_date
+        else:
+            base_date = timezone.now().date()
+
+        # Only set/update if not set or if based on payment_at
+        if self.payment_at or not self.next_billing_date:
+            self.next_billing_date = base_date + timedelta(days=30)
+        super().save(*args, **kwargs)
+
+
+class TokenUsage(models.Model):
+    """Tracks token consumption per event for billing and quota enforcement."""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='token_usages')
+    session = models.ForeignKey(AnalysisSession, on_delete=models.SET_NULL, null=True, blank=True, related_name='token_usages')
+    dataset = models.ForeignKey(UserDataset, on_delete=models.SET_NULL, null=True, blank=True, related_name='token_usages')
+    tokens_used = models.PositiveIntegerField()
+    cost_usd = models.DecimalField(max_digits=12, decimal_places=6, default=Decimal('0.0'))
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['user', 'created_at'])]
+
+    def __str__(self):
+        return f"{self.user.username} used {self.tokens_used} tokens (${self.cost_usd}) on {self.created_at}"
+
+
+class BillingSetting(models.Model):
+    """Global billing settings editable via admin (singleton)."""
+    usd_to_bdt_rate = models.DecimalField(max_digits=10, decimal_places=4, default=Decimal('122.5'))
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Billing Settings (USD->BDT: {self.usd_to_bdt_rate})"
+
+    @classmethod
+    def get_rate(cls) -> Decimal:
+        obj = cls.objects.first()
+        return obj.usd_to_bdt_rate if obj else Decimal('122.5')
