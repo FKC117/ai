@@ -1,5 +1,7 @@
 from django.urls import path
 from . import views
+from . import views_chat
+from . import views_reports
 
 urlpatterns = [
     path('', views.home, name='homepage'),
@@ -28,8 +30,8 @@ urlpatterns = [
     path('api/save-ui-state/', views.save_ui_state, name='save_ui_state'),
     
     # AI Chat endpoints
-    path('api/v1/chat/send_message/', views.send_chat_message, name='send_chat_message'),
-    path('api/v1/chat/history/', views.get_chat_history, name='get_chat_history'),
-    path('api/v1/report/add/', views.add_to_report, name='add_to_report'),
-    path('api/v1/report/download', views.download_report, name='download_report'),
+    path('api/v1/chat/send_message/', views_chat.send_chat_message, name='send_chat_message'),
+    path('api/v1/chat/history/', views_chat.get_chat_history, name='get_chat_history'),
+    path('api/v1/report/add/', views_reports.add_to_report, name='add_to_report'),
+    path('api/v1/report/download', views_reports.download_report, name='download_report'),
 ]
