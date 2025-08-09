@@ -979,7 +979,12 @@
                                 <span>Interactive Charts</span>
                             </div>
                         </div>
-                        <div id="main-chart" class="h-96 w-full"></div>
+                        <div id="main-chart" class="h-96 w-full flex items-center justify-center"></div>
+                        <div id="correlation-container" class="hidden mt-4">
+                            <div class="overflow-auto" id="correlation-table-wrapper"></div>
+                            <div class="mt-3 text-xs text-text-secondary" id="correlation-notes"></div>
+                            <div class="mt-4" id="correlation-heatmap"></div>
+                        </div>
                     </div>
 
                     <!-- AI Data Pass Section -->
@@ -1176,8 +1181,7 @@
                 document.body.appendChild(token);
             }
             
-            // Initialize D3 Chart
-            initializeChart();
+            // Do not render a hardcoded chart; charts are rendered per tab via updateChart
             
             // File Upload Functionality
             const fileUpload = document.getElementById('dataset-upload');
@@ -1194,7 +1198,9 @@
             
             // Dataset storage
             let datasets = [];
+            window.datasets = datasets;
             let currentDatasetIndex = -1; // Start with no dataset selected
+            window.currentDatasetIndex = currentDatasetIndex;
             
             // State persistence functions
             function saveStateToStorage() {
@@ -1303,6 +1309,7 @@
                         
                         // Load datasets
                         datasets = data.datasets || [];
+                        window.datasets = datasets;
                         
                         // Use database session ID if available, otherwise fall back to localStorage
                         if (data.current_session_id) {
@@ -1316,6 +1323,7 @@
                             const datasetExists = datasets.find(d => d.id === window.currentDatasetId);
                             if (datasetExists) {
                                 currentDatasetIndex = datasets.indexOf(datasetExists);
+                                window.currentDatasetIndex = currentDatasetIndex;
                                 console.log('Using restored state with dataset:', window.currentDatasetId);
                             } else {
                                 // Dataset no longer exists, use backend state
@@ -1323,6 +1331,7 @@
                                 if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
                                     window.currentDatasetId = datasets[currentDatasetIndex].id;
                                     window.currentDatasetName = datasets[currentDatasetIndex].name;
+                                    window.currentDatasetIndex = currentDatasetIndex;
                                 }
                                 console.log('Dataset no longer exists, using backend state');
                             }
@@ -1332,6 +1341,7 @@
                             if (currentDatasetIndex >= 0 && datasets[currentDatasetIndex]) {
                                 window.currentDatasetId = datasets[currentDatasetIndex].id;
                                 window.currentDatasetName = datasets[currentDatasetIndex].name;
+                                window.currentDatasetIndex = currentDatasetIndex;
                             }
                         }
                         
@@ -1401,6 +1411,7 @@
                         if (ds) { 
                             window.currentDatasetName = ds.name;
                             currentDatasetIndex = datasets.indexOf(ds);
+                            window.currentDatasetIndex = currentDatasetIndex;
                         }
                         
                         // Save state to localStorage
@@ -2719,10 +2730,10 @@
                         document.getElementById('summary-statistics-content').classList.remove('hidden');
                         document.getElementById('main-chart-container').classList.add('hidden');
                     } else {
-                        // Show main chart container for other tabs
-                        document.getElementById('summary-statistics-content').classList.add('hidden');
-                        document.getElementById('main-chart-container').classList.remove('hidden');
-                        updateChart(tabId);
+                // Show main chart container for other tabs
+                document.getElementById('summary-statistics-content').classList.add('hidden');
+                document.getElementById('main-chart-container').classList.remove('hidden');
+                updateChart(tabId);
                     }
                 });
             });
@@ -3474,119 +3485,21 @@
             return cookieValue;
         }
         
-        // D3.js Chart Implementation
-        function initializeChart() {
-            const margin = {top: 20, right: 30, bottom: 40, left: 50};
-            const width = 800 - margin.left - margin.right;
-            const height = 350 - margin.bottom - margin.top;
-            
-            // Sample data
-            const data = [
-                {x: 10000, y: 65000}, {x: 15000, y: 89000}, {x: 20000, y: 112000},
-                {x: 25000, y: 135000}, {x: 30000, y: 158000}, {x: 35000, y: 181000},
-                {x: 40000, y: 204000}, {x: 45000, y: 227000}, {x: 50000, y: 250000},
-                {x: 55000, y: 273000}, {x: 60000, y: 296000}, {x: 65000, y: 319000}
-            ];
-            
-            const svg = d3.select('#main-chart')
-                .append('svg')
-                .attr('width', width + margin.left + margin.right)
-                .attr('height', height + margin.top + margin.bottom)
-                .append('g')
-                .attr('transform', `translate(${margin.left},${margin.top})`);
-            
-            // Scales
-            const xScale = d3.scaleLinear()
-                .domain(d3.extent(data, d => d.x))
-                .range([0, width]);
-            
-            const yScale = d3.scaleLinear()
-                .domain(d3.extent(data, d => d.y))
-                .range([height, 0]);
-            
-            // Line generator
-            const line = d3.line()
-                .x(d => xScale(d.x))
-                .y(d => yScale(d.y))
-                .curve(d3.curveMonotoneX);
-            
-            // Add axes
-            svg.append('g')
-                .attr('transform', `translate(0,${height})`)
-                .call(d3.axisBottom(xScale).tickFormat(d => '$' + d3.format('.0s')(d)));
-            
-            svg.append('g')
-                .call(d3.axisLeft(yScale).tickFormat(d => '$' + d3.format('.0s')(d)));
-            
-            // Add axis labels
-            svg.append('text')
-                .attr('transform', 'rotate(-90)')
-                .attr('y', 0 - margin.left)
-                .attr('x', 0 - (height / 2))
-                .attr('dy', '1em')
-                .style('text-anchor', 'middle')
-                .style('font-size', '12px')
-                .style('fill', '#718096')
-                .text('Revenue ($)');
-            
-            svg.append('text')
-                .attr('transform', `translate(${width / 2}, ${height + margin.bottom})`)
-                .style('text-anchor', 'middle')
-                .style('font-size', '12px')
-                .style('fill', '#718096')
-                .text('Marketing Spend ($)');
-            
-            // Add regression line
-            svg.append('path')
-                .datum(data)
-                .attr('fill', 'none')
-                .attr('stroke', '#38b2ac')
-                .attr('stroke-width', 3)
-                .attr('d', line);
-            
-            // Add data points
-            svg.selectAll('.dot')
-                .data(data)
-                .enter().append('circle')
-                .attr('class', 'dot')
-                .attr('cx', d => xScale(d.x))
-                .attr('cy', d => yScale(d.y))
-                .attr('r', 5)
-                .attr('fill', '#1a365d')
-                .attr('opacity', 0.7)
-                .on('mouseover', function(event, d) {
-                    d3.select(this).attr('r', 7).attr('opacity', 1);
-                    
-                    // Add tooltip
-                    const tooltip = svg.append('g')
-                        .attr('id', 'tooltip');
-                    
-                    const rect = tooltip.append('rect')
-                        .attr('x', xScale(d.x) + 10)
-                        .attr('y', yScale(d.y) - 30)
-                        .attr('width', 120)
-                        .attr('height', 25)
-                        .attr('fill', '#1a365d')
-                        .attr('rx', 4);
-                    
-                    tooltip.append('text')
-                        .attr('x', xScale(d.x) + 15)
-                        .attr('y', yScale(d.y) - 12)
-                        .attr('fill', 'white')
-                        .style('font-size', '12px')
-                        .text(`$${d3.format(',')(d.x)} → $${d3.format(',')(d.y)}`);
-                })
-                .on('mouseout', function() {
-                    d3.select(this).attr('r', 5).attr('opacity', 0.7);
-                    svg.select('#tooltip').remove();
-                });
-        }
+        // Removed hardcoded D3 chart. Charts will be rendered dynamically per tab.
+
+        // Heatmap now rendered by backend (seaborn) and embedded as <img>
         
         function updateChart(tabId) {
+            // Resolve dataset state safely across scopes
+            const ds = (typeof datasets !== 'undefined') ? datasets : (window.datasets || []);
+            const idx = (typeof currentDatasetIndex !== 'undefined') ? currentDatasetIndex : (window.currentDatasetIndex ?? -1);
+
             // Check if there's a current dataset
-            if (datasets.length === 0 || currentDatasetIndex === -1) {
-                // No dataset selected, show blank state
-                showBlankState();
+            if (ds.length === 0 || idx === -1) {
+                // No dataset selected, show blank state (if available)
+                if (typeof showBlankState === 'function') {
+                    showBlankState();
+                }
                 return;
             }
             
@@ -3598,11 +3511,16 @@
             
             // Simulate chart updates based on tab selection
             const chartContainer = document.getElementById('main-chart');
+            const corrContainer = document.getElementById('correlation-container');
+            const corrWrapper = document.getElementById('correlation-table-wrapper');
+            const corrNotes = document.getElementById('correlation-notes');
             
             // Add loading state
             chartContainer.style.opacity = '0.5';
             
-            setTimeout(() => {
+            setTimeout(async () => {
+                // Clear any previous content in main chart area
+                chartContainer.innerHTML = '';
                 chartContainer.style.opacity = '1';
                 
                 // Update chart title based on tab
@@ -3616,6 +3534,73 @@
                 const titleElement = chartContainer.parentElement.querySelector('h3');
                 if (titleElement && titles[tabId]) {
                     titleElement.textContent = titles[tabId];
+                }
+
+                // Toggle correlation view
+                if (tabId === 'tab-correlation') {
+                    // Fetch analysis (includes correlation) for the current dataset
+                    const dataset = ds[idx];
+                    try {
+                        const res = await fetch(`{% url "get_dataset_analysis" 0 %}`.replace('0', dataset.id));
+                        const data = await res.json();
+                        if (data && !data.error) {
+                            const matrix = (data.correlation_matrix && data.correlation_matrix.matrix) || null;
+                            if (matrix) {
+                                // Render heatmap image from backend (seaborn) into main chart area
+                                const heatmapUrl = `{% url "correlation_heatmap" 0 %}`.replace('0', dataset.id) + `?t=${Date.now()}`;
+                                chartContainer.innerHTML = `<img src="${heatmapUrl}" alt="Correlation Heatmap" class="max-h-96 object-contain border border-gray-200 rounded">`;
+
+                                // Build correlation matrix table below the heatmap
+                                const vars = Object.keys(matrix);
+                                let html = '<table class="min-w-full border-collapse border border-gray-200 text-xs"><thead><tr><th class="border border-gray-200 p-1 bg-gray-50"></th>';
+                                html += vars.map(v => `<th class=\"border border-gray-200 p-1 bg-gray-50 text-left\">${v}</th>`).join('');
+                                html += '</tr></thead><tbody>';
+                                vars.forEach(rowVar => {
+                                    html += `<tr><th class=\"border border-gray-200 p-1 bg-gray-50 text-left\">${rowVar}</th>`;
+                                    vars.forEach(colVar => {
+                                        const val = (matrix[rowVar] && matrix[rowVar][colVar] !== undefined) ? matrix[rowVar][colVar] : null;
+                                        const num = typeof val === 'number' ? val : null;
+                                        const bg = num === null ? '#ffffff' : (Math.abs(num) >= 0.7 ? '#fee2e2' : Math.abs(num) >= 0.4 ? '#ffedd5' : '#f3f4f6');
+                                        html += `<td class=\"border border-gray-200 p-1 text-right\" style=\"background:${bg}\">${num !== null ? num.toFixed(3) : ''}</td>`;
+                                    });
+                                    html += '</tr>';
+                                });
+                                html += '</tbody></table>';
+                                corrWrapper.innerHTML = html;
+
+                                // Interpretation text (top strong correlations)
+                                const strong = (data.correlation_matrix && data.correlation_matrix.strong_correlations) || [];
+                                if (strong.length) {
+                                    const top = strong.slice(0, 5).map(s => `${s.variable1} ↔ ${s.variable2} (r=${Number(s.correlation).toFixed(3)})`).join(', ');
+                                    corrNotes.textContent = `Strong correlations (|r| ≥ 0.7): ${top}`;
+                                } else {
+                                    corrNotes.textContent = 'No strong correlations detected (|r| ≥ 0.7).';
+                                }
+                                corrContainer.classList.remove('hidden');
+                            } else {
+                                chartContainer.innerHTML = '<div class="text-sm text-text-secondary">Correlation matrix unavailable for this dataset.</div>';
+                                corrWrapper.innerHTML = '';
+                                corrNotes.textContent = '';
+                                corrContainer.classList.add('hidden');
+                            }
+                        } else {
+                            chartContainer.innerHTML = `<div class="text-sm text-red-600">${data.error || 'Failed to load correlation matrix.'}</div>`;
+                            corrWrapper.innerHTML = '';
+                            corrNotes.textContent = '';
+                            corrContainer.classList.add('hidden');
+                        }
+                    } catch (e) {
+                        chartContainer.innerHTML = '<div class="text-sm text-red-600">Error loading correlation matrix.</div>';
+                        corrWrapper.innerHTML = '';
+                        corrNotes.textContent = '';
+                        corrContainer.classList.add('hidden');
+                    }
+                } else {
+                    // For non-correlation tabs, hide correlation area and keep chart area empty
+                    corrContainer.classList.add('hidden');
+                    corrWrapper.innerHTML = '';
+                    corrNotes.textContent = '';
+                    document.getElementById('correlation-heatmap').innerHTML = '';
                 }
             }, 500);
         }

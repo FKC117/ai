@@ -36,6 +36,10 @@ from .session_manager import (
     get_user_billing_summary as build_billing_summary,
 )
 from .analytics_service import get_summary_statistics_data
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 # Create your views here.
 def home(request):
@@ -420,6 +424,65 @@ def get_summary_statistics(request, dataset_id):
     except Exception as e:
         print(f"Error in get_summary_statistics: {str(e)}")
         return JsonResponse({'error': f'Error generating summary: {str(e)}'}, status=500)
+
+
+@login_required
+def get_dataset_analysis(request, dataset_id):
+    """Return full analysis including correlation matrix for the given dataset."""
+    try:
+        # Ensure the dataset belongs to the user
+        _ = UserDataset.objects.get(id=dataset_id, user=request.user)
+        stats = get_summary_statistics_data(dataset_id)
+        return JsonResponse(stats)
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating analysis: {str(e)}'}, status=500)
+
+
+@login_required
+def correlation_heatmap(request, dataset_id):
+    """Return a seaborn heatmap PNG for the dataset's correlation matrix."""
+    try:
+        dataset = UserDataset.objects.get(id=dataset_id, user=request.user)
+        # Build DataFrame
+        import pandas as pd
+        import numpy as np
+        from .analytics_service import read_dataset_file
+
+        df = read_dataset_file(dataset)
+        numeric_cols = df.select_dtypes(include=['number']).columns
+        if len(numeric_cols) < 2:
+            # Render a simple placeholder figure
+            fig, ax = plt.subplots(figsize=(6, 4))
+            ax.text(0.5, 0.5, 'Not enough numeric columns for correlation',
+                    ha='center', va='center')
+            ax.axis('off')
+        else:
+            corr = df[numeric_cols].corr()
+            # Plot heatmap
+            fig, ax = plt.subplots(figsize=(max(6, len(numeric_cols) * 0.5),
+                                            max(4, len(numeric_cols) * 0.4)))
+            sns.heatmap(
+                corr,
+                vmin=-1, vmax=1, center=0,
+                cmap='RdBu_r', annot=False, square=False,
+                cbar_kws={'shrink': 0.75},
+                ax=ax
+            )
+            ax.set_title(f'Correlation Heatmap: {dataset.name}', fontsize=10)
+            plt.tight_layout()
+
+        from io import BytesIO
+        buf = BytesIO()
+        fig.savefig(buf, format='png', dpi=150)
+        plt.close(fig)
+        buf.seek(0)
+        return HttpResponse(buf.getvalue(), content_type='image/png')
+    except UserDataset.DoesNotExist:
+        return JsonResponse({'error': 'Dataset not found'}, status=404)
+    except Exception as e:
+        return JsonResponse({'error': f'Error generating heatmap: {str(e)}'}, status=500)
 
 @login_required
 def get_user_datasets(request):

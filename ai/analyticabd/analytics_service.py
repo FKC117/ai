@@ -1,6 +1,7 @@
-from typing import Optional
+from typing import Optional, Any
 import os
 import pandas as pd
+import numpy as np
 
 from .models import UserDataset
 
@@ -120,7 +121,8 @@ def get_summary_statistics_data(dataset_id: int) -> dict:
         'dataset_overview': {
             'total_rows': len(df),
             'total_columns': len(df.columns),
-            'data_types': df.dtypes.to_dict(),
+            # Convert dtypes (which include ObjectDType) to strings for JSON serialization
+            'data_types': {str(col): str(dtype) for col, dtype in df.dtypes.to_dict().items()},
             'sample_data': df.head(5).to_dict('records'),
         },
         'variable_summary': {},
@@ -181,8 +183,16 @@ def get_summary_statistics_data(dataset_id: int) -> dict:
     numeric_cols = df.select_dtypes(include=['number']).columns
     if len(numeric_cols) > 1:
         corr = df[numeric_cols].corr()
+        # Convert correlation matrix to pure Python floats (avoid numpy types for JSON)
+        matrix: dict = {}
+        for row in corr.index:
+            row_dict: dict = {}
+            for col in corr.columns:
+                val = corr.at[row, col]
+                row_dict[str(col)] = None if pd.isna(val) else float(val)
+            matrix[str(row)] = row_dict
         summary_stats['correlation_matrix'] = {
-            'matrix': corr.to_dict(),
+            'matrix': matrix,
             'strong_correlations': [],
         }
         for i in range(len(corr.columns)):
@@ -199,4 +209,33 @@ def get_summary_statistics_data(dataset_id: int) -> dict:
 
     # Comprehensive HTML table
     summary_stats['comprehensive_table'] = create_comprehensive_summary_table(summary_stats)
-    return summary_stats
+
+    # Ensure all values are JSON serializable (convert numpy types, NaN -> None)
+    def make_json_safe(value: Any) -> Any:
+        # Scalars
+        if isinstance(value, (np.integer, )):
+            return int(value)
+        if isinstance(value, (np.floating, )):
+            # Convert NaN/Inf to None or finite float
+            if pd.isna(value) or np.isinf(value):
+                return None
+            return float(value)
+        if isinstance(value, (np.bool_, )):
+            return bool(value)
+        if value is None:
+            return None
+        # Containers
+        if isinstance(value, dict):
+            return {str(k): make_json_safe(v) for k, v in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [make_json_safe(v) for v in value]
+        # Pandas NA
+        try:
+            if pd.isna(value):
+                return None
+        except Exception:
+            pass
+        # Fallback: cast to str for unsupported types
+        return value
+
+    return make_json_safe(summary_stats)
